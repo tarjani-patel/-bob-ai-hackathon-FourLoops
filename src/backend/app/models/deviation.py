@@ -35,4 +35,6 @@ class Deviation(BaseModel):
     status: str = "Open"
     explanation: str
     recommendedAction: str
+    siteCode: Optional[str] = None
+    ruleViolated: Optional[str] = None
     clinicalExplanation: Optional[DeviationExplanation] = None

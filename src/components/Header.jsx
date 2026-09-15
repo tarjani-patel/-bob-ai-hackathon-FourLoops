@@ -30,7 +30,10 @@ export function Header() {
     runComplianceAnalysis, 
     isAnalyzing,
     lastAnalysisResult,
-    logAuditEvent
+    logAuditEvent,
+    apiHealthy,
+    isApiLoading,
+    refreshData
   } = useTrial();
 
   const { 
@@ -123,12 +126,36 @@ export function Header() {
           </div>
         </div>
 
-        {lastAnalysisResult && (
-          <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-500 bg-emerald-50/60 border border-emerald-200/60 px-2.5 py-1 rounded-md">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Verified at <span className="font-mono text-slate-700">{lastAnalysisResult.timestamp}</span></span>
-          </div>
-        )}
+        {/* Backend API Health Status Indicator */}
+        <div 
+          onClick={refreshData}
+          title={
+            apiHealthy === true
+              ? "FastAPI Backend Live (port 8000). Click to re-sync data."
+              : apiHealthy === false
+              ? "FastAPI Backend Offline. Operating in local preview mode. Click to retry connection."
+              : "Checking FastAPI connection..."
+          }
+          className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border cursor-pointer select-none transition-all ${
+            apiHealthy === true
+              ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/70"
+              : apiHealthy === false
+              ? "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100/70"
+              : "bg-slate-50 text-slate-600 border-slate-200"
+          }`}
+        >
+          <span className={`w-2 h-2 rounded-full ${
+            apiHealthy === true
+              ? "bg-emerald-500 animate-pulse"
+              : apiHealthy === false
+              ? "bg-amber-500"
+              : "bg-slate-400"
+          }`} />
+          <span>
+            {apiHealthy === true ? "FastAPI Live" : apiHealthy === false ? "Backend Offline" : "Connecting..."}
+          </span>
+          {isApiLoading && <RotateCw className="w-2.5 h-2.5 animate-spin ml-0.5" />}
+        </div>
       </div>
 
       {/* Middle: Global Search */}

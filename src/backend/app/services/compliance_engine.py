@@ -63,6 +63,8 @@ def evaluate_compliance(
                         status="Open",
                         explanation=expl,
                         recommendedAction=recom,
+                        siteCode=patient.siteId,
+                        ruleViolated=expected,
                         clinicalExplanation=clinical_expl,
                     )
                 )
@@ -100,6 +102,8 @@ def evaluate_compliance(
                         status="In Review",
                         explanation=expl,
                         recommendedAction=recom,
+                        siteCode=patient.siteId,
+                        ruleViolated=expected,
                         clinicalExplanation=clinical_expl,
                     )
                 )
@@ -131,6 +135,8 @@ def evaluate_compliance(
                         status="Open",
                         explanation=expl,
                         recommendedAction=recom,
+                        siteCode=patient.siteId,
+                        ruleViolated=expected,
                         clinicalExplanation=clinical_expl,
                     )
                 )
@@ -168,6 +174,8 @@ def evaluate_compliance(
                                 status="In Review",
                                 explanation=expl,
                                 recommendedAction=recom,
+                                siteCode=patient.siteId,
+                                ruleViolated=expected,
                                 clinicalExplanation=clinical_expl,
                             )
                         )
@@ -200,6 +208,8 @@ def evaluate_compliance(
                             status="Open",
                             explanation=expl,
                             recommendedAction=recom,
+                            siteCode=patient.siteId,
+                            ruleViolated=expected,
                             clinicalExplanation=clinical_expl,
                         )
                     )
@@ -238,6 +248,8 @@ def evaluate_compliance(
                         status="Escalated",
                         explanation=expl,
                         recommendedAction=recom,
+                        siteCode=patient.siteId,
+                        ruleViolated=expected,
                         clinicalExplanation=clinical_expl,
                     )
                 )
@@ -277,6 +289,8 @@ def evaluate_compliance(
                         status="Escalated",
                         explanation=expl,
                         recommendedAction=recom,
+                        siteCode=patient.siteId,
+                        ruleViolated=expected,
                         clinicalExplanation=clinical_expl,
                     )
                 )
@@ -315,6 +329,8 @@ def evaluate_compliance(
                         status="Open",
                         explanation=expl,
                         recommendedAction=recom,
+                        siteCode=patient.siteId,
+                        ruleViolated=expected,
                         clinicalExplanation=clinical_expl,
                     )
                 )

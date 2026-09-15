@@ -319,11 +319,11 @@ export function DeviationsPage() {
                         {dev.patientId}
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="font-medium text-slate-800">{dev.siteCode}</div>
+                        <div className="font-medium text-slate-800">{dev.siteCode || dev.siteId}</div>
                         <div className="text-[10px] text-slate-400">{dev.siteName}</div>
                       </td>
                       <td className="py-3.5 px-4 text-slate-700 max-w-xs truncate font-medium">
-                        {dev.ruleViolated}
+                        {dev.ruleViolated || dev.expected}
                       </td>
                       <td className="py-3.5 px-4 text-slate-600 max-w-xs truncate">
                         {dev.actual}

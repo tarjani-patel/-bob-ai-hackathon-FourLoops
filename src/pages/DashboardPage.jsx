@@ -754,14 +754,14 @@ export function DashboardPage() {
                       <span className="font-mono text-xs font-bold text-slate-900">{dev.id}</span>
                       <SeverityBadge severity={dev.severity} />
                       <span className="text-[11px] font-medium text-slate-500 font-mono">
-                        {dev.patientId} • {dev.siteCode}
+                        {dev.patientId} • {dev.siteCode || dev.siteId}
                       </span>
                     </div>
                     <div className="mt-1 text-xs font-semibold text-slate-800 truncate">
-                      {dev.description}
+                      {dev.description || dev.actual || dev.explanation}
                     </div>
                     <div className="text-[11px] text-slate-500 truncate mt-0.5">
-                      {dev.explanationSummary || dev.ruleViolated}
+                      {dev.explanationSummary || dev.ruleViolated || dev.expected}
                     </div>
                   </div>
 

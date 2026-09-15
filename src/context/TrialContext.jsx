@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, useCallback } from "react";
+import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from "react";
 import { PROTOCOL_CONFIG } from "../data/protocolConfig.js";
 import { SYNTHETIC_PATIENTS } from "../data/syntheticPatients.js";
 import { evaluateCompliance } from "../logic/complianceEngine.js";
@@ -6,6 +6,19 @@ import { calculateTrialMetrics, calculateSiteRisk, calculatePatientRisk } from "
 import { computeSiteTrendAndPrediction } from "../logic/trendEngine.js";
 import { generateCapasFromDeviations } from "../logic/capaEngine.js";
 import { generateTrialExecutiveInsight } from "../logic/explanationEngine.js";
+
+import {
+  getHealth,
+  getProtocol,
+  getPatients,
+  getDeviations,
+  getTrialRisk,
+  getCAPAs,
+  getAuditLogs,
+  runComplianceAnalysis as apiRunComplianceAnalysis,
+  updatePatient as apiUpdatePatient,
+  updateCAPA as apiUpdateCAPA,
+} from "../api/index.js";
 
 const TrialContext = createContext(null);
 
@@ -67,10 +80,15 @@ const BASELINE_AUDIT_LOGS = [
 ];
 
 export function TrialProvider({ children }) {
-  const [protocol] = useState(PROTOCOL_CONFIG);
+  const [protocol, setProtocol] = useState(PROTOCOL_CONFIG);
   const [patients, setPatients] = useState(SYNTHETIC_PATIENTS);
 
-  // Analysis state: starts unanalyzed to make the "Run Compliance Analysis" action clearly impactful
+  // Backend API connection & health state
+  const [apiHealthy, setApiHealthy] = useState(null); // null = checking, true = live, false = offline
+  const [isApiLoading, setIsApiLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
+
+  // Analysis state
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
@@ -79,17 +97,82 @@ export function TrialProvider({ children }) {
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
   // Custom CAPAs state so users can approve/update them interactively
+  const [backendCapas, setBackendCapas] = useState(null);
   const [customCapas, setCustomCapas] = useState(null);
+
+  // Deviations & metrics from backend
+  const [backendDeviations, setBackendDeviations] = useState(null);
+  const [backendMetrics, setBackendMetrics] = useState(null);
 
   // Audit trail state
   const [auditLogs, setAuditLogs] = useState(BASELINE_AUDIT_LOGS);
 
-  // Compute deviations deterministically
-  const fullDeviations = useMemo(() => {
-    return evaluateCompliance(patients, protocol);
-  }, [patients, protocol]);
+  // Initial Data Fetch & Health Check from FastAPI backend
+  const fetchInitialData = useCallback(async () => {
+    setIsApiLoading(true);
+    setApiError(null);
 
-  // If hasAnalyzed is false, provide preliminary baseline intake deviations (only 4 minor admin issues)
+    try {
+      // 1. Health check
+      const health = await getHealth();
+      if (health?.status === "ok") {
+        setApiHealthy(true);
+
+        // 2. Fetch protocol, patients, deviations, risk, capas, audit in parallel
+        const [protoRes, ptsRes, devsRes, riskRes, capasRes, auditRes] = await Promise.allSettled([
+          getProtocol(),
+          getPatients(),
+          getDeviations(),
+          getTrialRisk(),
+          getCAPAs(),
+          getAuditLogs()
+        ]);
+
+        if (protoRes.status === "fulfilled" && protoRes.value) {
+          setProtocol(protoRes.value);
+        }
+        if (ptsRes.status === "fulfilled" && Array.isArray(ptsRes.value)) {
+          setPatients(ptsRes.value);
+        }
+        if (devsRes.status === "fulfilled" && Array.isArray(devsRes.value)) {
+          setBackendDeviations(devsRes.value);
+        }
+        if (riskRes.status === "fulfilled" && riskRes.value) {
+          setBackendMetrics(riskRes.value);
+        }
+        if (capasRes.status === "fulfilled" && Array.isArray(capasRes.value)) {
+          setBackendCapas(capasRes.value);
+        }
+        if (auditRes.status === "fulfilled" && Array.isArray(auditRes.value) && auditRes.value.length > 0) {
+          setAuditLogs(auditRes.value);
+        }
+
+        console.log("[TrialGuard AI] Successfully connected to FastAPI backend at", import.meta.env.VITE_API_URL || "http://localhost:8000");
+      } else {
+        setApiHealthy(false);
+      }
+    } catch (err) {
+      console.warn("[TrialGuard AI] FastAPI backend unavailable, operating in local fallback mode:", err.message);
+      setApiHealthy(false);
+      setApiError(err.message);
+    } finally {
+      setIsApiLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, [fetchInitialData]);
+
+  // Compute deviations deterministically (backend deviations prioritized if loaded)
+  const fullDeviations = useMemo(() => {
+    if (backendDeviations && backendDeviations.length > 0) {
+      return backendDeviations;
+    }
+    return evaluateCompliance(patients, protocol);
+  }, [backendDeviations, patients, protocol]);
+
+  // If hasAnalyzed is false, provide preliminary baseline intake deviations (only minor admin issues)
   // When hasAnalyzed is true, provide all detected deviations!
   const deviations = useMemo(() => {
     if (!hasAnalyzed) {
@@ -100,8 +183,22 @@ export function TrialProvider({ children }) {
 
   // Compute trial metrics & site risks
   const trialMetrics = useMemo(() => {
+    if (hasAnalyzed && backendMetrics && backendMetrics.siteRiskList) {
+      // Enrich backend site risks with trend calculations
+      const enrichedList = backendMetrics.siteRiskList.map((site) => {
+        const trendData = computeSiteTrendAndPrediction(site);
+        return {
+          ...site,
+          ...trendData
+        };
+      });
+      return {
+        ...backendMetrics,
+        siteRiskList: enrichedList
+      };
+    }
+
     const metrics = calculateTrialMetrics(protocol.sites, patients, deviations, protocol);
-    // Enrich each site with trend and predictive forecast
     metrics.siteRiskList = metrics.siteRiskList.map((site) => {
       const trendData = computeSiteTrendAndPrediction(site);
       return {
@@ -110,7 +207,7 @@ export function TrialProvider({ children }) {
       };
     });
     return metrics;
-  }, [protocol, patients, deviations]);
+  }, [hasAnalyzed, backendMetrics, protocol, patients, deviations]);
 
   const siteRisks = useMemo(() => trialMetrics.siteRiskList, [trialMetrics]);
 
@@ -122,19 +219,25 @@ export function TrialProvider({ children }) {
   // Generate CAPAs
   const generatedCapas = useMemo(() => {
     if (!hasAnalyzed) return [];
+    if (backendCapas && backendCapas.length > 0) {
+      return backendCapas;
+    }
     return generateCapasFromDeviations(deviations, siteRisks);
-  }, [hasAnalyzed, deviations, siteRisks]);
+  }, [hasAnalyzed, backendCapas, deviations, siteRisks]);
 
   const capas = useMemo(() => {
     if (customCapas) return customCapas;
     return generatedCapas;
   }, [customCapas, generatedCapas]);
 
-  // Executive AI-style insight
+  // Executive insight
   const executiveInsight = useMemo(() => {
+    if (backendMetrics?.executiveInsight) {
+      return backendMetrics.executiveInsight;
+    }
     const highestSite = siteRisks.find((s) => s.riskBand === "High") || siteRisks[0];
     return generateTrialExecutiveInsight(trialMetrics, highestSite);
-  }, [trialMetrics, siteRisks]);
+  }, [backendMetrics, trialMetrics, siteRisks]);
 
   // Unread notification count
   const unreadNotificationCount = useMemo(() => {
@@ -168,12 +271,33 @@ export function TrialProvider({ children }) {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   }, []);
 
-  // Action: Update CAPA status with audit logging
-  const updateCapaStatus = useCallback((capaId, newStatus, user) => {
+  // Action: Update CAPA status with backend integration & audit logging
+  const updateCapaStatus = useCallback(async (capaId, newStatus, user) => {
+    // Optimistic UI update
     setCustomCapas((prev) => {
-      const current = prev || generatedCapas;
+      const current = prev || capas;
       return current.map((c) => (c.id === capaId ? { ...c, status: newStatus } : c));
     });
+
+    // If backend is active, persist to FastAPI
+    if (apiHealthy) {
+      try {
+        const updated = await apiUpdateCAPA(capaId, { status: newStatus });
+        if (updated) {
+          setCustomCapas((prev) => {
+            const current = prev || capas;
+            return current.map((c) => (c.id === capaId ? updated : c));
+          });
+        }
+        // Refresh audit logs from backend
+        const freshLogs = await getAuditLogs();
+        if (Array.isArray(freshLogs) && freshLogs.length > 0) {
+          setAuditLogs(freshLogs);
+        }
+      } catch (err) {
+        console.error("[TrialGuard API] Failed to update CAPA on backend:", err);
+      }
+    }
 
     logAuditEvent({
       action: newStatus === "Approved" ? "CAPA_APPROVED" : "CAPA_STATUS_CHANGED",
@@ -183,19 +307,46 @@ export function TrialProvider({ children }) {
       performedBy: user?.name || "Elena Rostova",
       role: user?.role || "SPONSOR"
     });
-  }, [generatedCapas, logAuditEvent]);
+  }, [apiHealthy, capas, logAuditEvent]);
 
   // Action: Data Manager edits synthetic patient data (reconciles lab, doses, or vitals)
-  const editPatientData = useCallback((patientId, updater, logDetails, user) => {
+  const editPatientData = useCallback(async (patientId, updater, logDetails, user) => {
+    let updatedRecord = null;
+
     setPatients((prevPatients) => {
       return prevPatients.map((pt) => {
         if (pt.id !== patientId) return pt;
-        if (typeof updater === "function") {
-          return updater(pt);
-        }
-        return { ...pt, ...updater };
+        const result = typeof updater === "function" ? updater(pt) : { ...pt, ...updater };
+        updatedRecord = result;
+        return result;
       });
     });
+
+    // If backend is active, persist to FastAPI PATCH /api/patients/{id}
+    if (apiHealthy && updatedRecord) {
+      try {
+        const payload = {
+          status: updatedRecord.status,
+          age: updatedRecord.age,
+          gender: updatedRecord.gender,
+          visits: updatedRecord.visits,
+          labs: updatedRecord.labs,
+          medications: updatedRecord.medications,
+          reasonForChange: logDetails || `eCRF record corrected for subject ${patientId}.`,
+        };
+        const serverPt = await apiUpdatePatient(patientId, payload);
+        if (serverPt) {
+          setPatients((prev) => prev.map((p) => (p.id === patientId ? serverPt : p)));
+        }
+        // Refresh audit logs from backend
+        const freshLogs = await getAuditLogs();
+        if (Array.isArray(freshLogs) && freshLogs.length > 0) {
+          setAuditLogs(freshLogs);
+        }
+      } catch (err) {
+        console.error("[TrialGuard API] Failed to update patient on backend:", err);
+      }
+    }
 
     logAuditEvent({
       action: "PATIENT_DATA_CORRECTED",
@@ -205,11 +356,14 @@ export function TrialProvider({ children }) {
       performedBy: user?.name || "Marcus Vance",
       role: user?.role || "DATA_MANAGER"
     });
-  }, [logAuditEvent]);
+  }, [apiHealthy, logAuditEvent]);
 
   // Action: Reset to Baseline
   const resetToBaseline = useCallback(() => {
     setPatients(SYNTHETIC_PATIENTS);
+    setBackendDeviations(null);
+    setBackendMetrics(null);
+    setBackendCapas(null);
     setHasAnalyzed(false);
     setCustomCapas(null);
     setLastAnalysisResult(null);
@@ -217,8 +371,8 @@ export function TrialProvider({ children }) {
     setAuditLogs(BASELINE_AUDIT_LOGS);
   }, []);
 
-  // Action: Run Compliance Analysis
-  const runComplianceAnalysis = useCallback((currentUser) => {
+  // Action: Run Compliance Analysis via FastAPI Backend or Local Deterministic Engine
+  const runComplianceAnalysis = useCallback(async (currentUser) => {
     setIsAnalyzing(true);
     setAnalysisProgress(15);
 
@@ -226,89 +380,163 @@ export function TrialProvider({ children }) {
     const step2 = setTimeout(() => setAnalysisProgress(75), 550);
     const step3 = setTimeout(() => setAnalysisProgress(95), 850);
 
-    const step4 = setTimeout(() => {
-      // Deterministically evaluate full compliance
-      const updatedDevs = evaluateCompliance(patients, protocol);
-      const updatedMetrics = calculateTrialMetrics(protocol.sites, patients, updatedDevs, protocol);
-      const highestSite = updatedMetrics.siteRiskList.find((s) => s.riskBand === "High") || updatedMetrics.siteRiskList[0];
+    try {
+      if (apiHealthy) {
+        // Execute real backend compliance analysis
+        const analysisRes = await apiRunComplianceAnalysis();
 
-      // New high-priority alerts generated by analysis
-      const newAlerts = [
-        {
-          id: `NOTIF-ANA-${Date.now()}-1`,
-          type: "Critical",
-          title: "Site 03 Risk Escalation (High)",
-          message: `Site 03 (Metro General) crossed High risk threshold (${highestSite?.score || 73}/100). Recurrent visit window and dosing breaches identified.`,
-          timestamp: "Just now",
-          read: false,
-          siteId: "SITE-03",
-          actionLink: "/sites"
-        },
-        {
-          id: `NOTIF-ANA-${Date.now()}-2`,
-          type: "Critical",
-          title: "Major Protocol Deviation Flagged",
-          message: "Participant PT-1043 prescribed prohibited substance 'Drug-X' (strong CYP3A4 inhibitor). Immediate review required.",
-          timestamp: "Just now",
-          read: false,
-          patientId: "PT-1043",
-          actionLink: "/deviations"
-        },
-        {
-          id: `NOTIF-ANA-${Date.now()}-3`,
-          type: "Warnings",
-          title: "Visit Window Deviation Detected",
-          message: "Participant PT-1042 completed Visit 2 on Day 20 (+6 days past protocol window).",
-          timestamp: "Just now",
-          read: false,
-          patientId: "PT-1042",
-          actionLink: "/deviations"
-        },
-        {
-          id: `NOTIF-ANA-${Date.now()}-4`,
-          type: "Warnings",
-          title: "CAPA-2026-001 Generated",
-          message: "Automated corrective action proposed for Site 03 scheduling non-compliance. Human review required.",
-          timestamp: "Just now",
-          read: false,
-          actionLink: "/capa"
-        }
-      ];
+        // Fetch freshly calculated state from backend
+        const [devsRes, riskRes, capasRes, auditRes] = await Promise.all([
+          getDeviations(),
+          getTrialRisk(),
+          getCAPAs(),
+          getAuditLogs()
+        ]);
 
-      setNotifications((prev) => [...newAlerts, ...prev]);
+        if (Array.isArray(devsRes)) setBackendDeviations(devsRes);
+        if (riskRes) setBackendMetrics(riskRes);
+        if (Array.isArray(capasRes)) setBackendCapas(capasRes);
+        if (Array.isArray(auditRes) && auditRes.length > 0) setAuditLogs(auditRes);
 
-      setLastAnalysisResult({
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-        patientsEvaluated: patients.length,
-        deviationsDetected: updatedDevs.length,
-        criticalCount: updatedMetrics.criticalDeviations,
-        majorCount: updatedMetrics.majorDeviations,
-        highestRiskSite: highestSite ? `${highestSite.siteCode} (${highestSite.siteName})` : "Site 03",
-        highestRiskScore: highestSite?.score || 73
-      });
+        const highestSite = riskRes?.siteRiskList?.[0] || { siteCode: "SITE-03", siteName: "Metro General", score: 73 };
 
-      setHasAnalyzed(true);
-      setAnalysisProgress(100);
+        const newAlerts = [
+          {
+            id: `NOTIF-ANA-${Date.now()}-1`,
+            type: "Critical",
+            title: "Site 03 Risk Escalation (High)",
+            message: `Site 03 (Metro General) crossed High risk threshold (${highestSite?.score || 73}/100). Recurrent visit window and dosing breaches identified.`,
+            timestamp: "Just now",
+            read: false,
+            siteId: "SITE-03",
+            actionLink: "/sites"
+          },
+          {
+            id: `NOTIF-ANA-${Date.now()}-2`,
+            type: "Critical",
+            title: "Major Protocol Deviation Flagged",
+            message: "Participant PT-1043 prescribed prohibited substance 'Drug-X' (strong CYP3A4 inhibitor). Immediate review required.",
+            timestamp: "Just now",
+            read: false,
+            patientId: "PT-1043",
+            actionLink: "/deviations"
+          },
+          {
+            id: `NOTIF-ANA-${Date.now()}-3`,
+            type: "Warnings",
+            title: "Visit Window Deviation Detected",
+            message: "Participant PT-1042 completed Visit 2 on Day 20 (+6 days past protocol window).",
+            timestamp: "Just now",
+            read: false,
+            patientId: "PT-1042",
+            actionLink: "/deviations"
+          },
+          {
+            id: `NOTIF-ANA-${Date.now()}-4`,
+            type: "Warnings",
+            title: "CAPA-2026-001 Generated",
+            message: "Automated corrective action proposed for Site 03 scheduling non-compliance. Human review required.",
+            timestamp: "Just now",
+            read: false,
+            actionLink: "/capa"
+          }
+        ];
+
+        setNotifications((prev) => [...newAlerts, ...prev]);
+
+        setLastAnalysisResult({
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+          patientsEvaluated: analysisRes.analyzedPatientsCount || patients.length,
+          deviationsDetected: analysisRes.deviationsDetectedCount || devsRes.length,
+          criticalCount: analysisRes.criticalDeviationsCount || 5,
+          majorCount: analysisRes.majorDeviationsCount || 9,
+          highestRiskSite: highestSite ? `${highestSite.siteCode} (${highestSite.siteName})` : "SITE-03",
+          highestRiskScore: highestSite?.score || 73
+        });
+
+        setHasAnalyzed(true);
+        setAnalysisProgress(100);
+      } else {
+        // Fallback local deterministic engine
+        const updatedDevs = evaluateCompliance(patients, protocol);
+        const updatedMetrics = calculateTrialMetrics(protocol.sites, patients, updatedDevs, protocol);
+        const highestSite = updatedMetrics.siteRiskList.find((s) => s.riskBand === "High") || updatedMetrics.siteRiskList[0];
+
+        const newAlerts = [
+          {
+            id: `NOTIF-ANA-${Date.now()}-1`,
+            type: "Critical",
+            title: "Site 03 Risk Escalation (High)",
+            message: `Site 03 (Metro General) crossed High risk threshold (${highestSite?.score || 73}/100). Recurrent visit window and dosing breaches identified.`,
+            timestamp: "Just now",
+            read: false,
+            siteId: "SITE-03",
+            actionLink: "/sites"
+          },
+          {
+            id: `NOTIF-ANA-${Date.now()}-2`,
+            type: "Critical",
+            title: "Major Protocol Deviation Flagged",
+            message: "Participant PT-1043 prescribed prohibited substance 'Drug-X' (strong CYP3A4 inhibitor). Immediate review required.",
+            timestamp: "Just now",
+            read: false,
+            patientId: "PT-1043",
+            actionLink: "/deviations"
+          },
+          {
+            id: `NOTIF-ANA-${Date.now()}-3`,
+            type: "Warnings",
+            title: "Visit Window Deviation Detected",
+            message: "Participant PT-1042 completed Visit 2 on Day 20 (+6 days past protocol window).",
+            timestamp: "Just now",
+            read: false,
+            patientId: "PT-1042",
+            actionLink: "/deviations"
+          },
+          {
+            id: `NOTIF-ANA-${Date.now()}-4`,
+            type: "Warnings",
+            title: "CAPA-2026-001 Generated",
+            message: "Automated corrective action proposed for Site 03 scheduling non-compliance. Human review required.",
+            timestamp: "Just now",
+            read: false,
+            actionLink: "/capa"
+          }
+        ];
+
+        setNotifications((prev) => [...newAlerts, ...prev]);
+
+        setLastAnalysisResult({
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+          patientsEvaluated: patients.length,
+          deviationsDetected: updatedDevs.length,
+          criticalCount: updatedMetrics.criticalDeviations,
+          majorCount: updatedMetrics.majorDeviations,
+          highestRiskSite: highestSite ? `${highestSite.siteCode} (${highestSite.siteName})` : "Site 03",
+          highestRiskScore: highestSite?.score || 73
+        });
+
+        setHasAnalyzed(true);
+        setAnalysisProgress(100);
+
+        logAuditEvent({
+          action: "COMPLIANCE_ANALYSIS_RUN",
+          entityType: "ENGINE",
+          entityId: protocol.trialId,
+          details: `Deterministic compliance verification executed: ${patients.length} subjects scanned, ${updatedDevs.length} deviations active.`,
+          performedBy: currentUser?.name || "Sarah Jenkins, CCRA",
+          role: currentUser?.role || "CRA"
+        });
+      }
+    } catch (err) {
+      console.error("[TrialGuard AI] Compliance analysis error:", err);
+    } finally {
       setIsAnalyzing(false);
-
-      // Audit log entry for analysis execution
-      logAuditEvent({
-        action: "COMPLIANCE_ANALYSIS_RUN",
-        entityType: "ENGINE",
-        entityId: protocol.trialId,
-        details: `Deterministic compliance verification executed: ${patients.length} subjects scanned, ${updatedDevs.length} deviations active.`,
-        performedBy: currentUser?.name || "Sarah Jenkins, CCRA",
-        role: currentUser?.role || "CRA"
-      });
-    }, 1000);
-
-    return () => {
       clearTimeout(step1);
       clearTimeout(step2);
       clearTimeout(step3);
-      clearTimeout(step4);
-    };
-  }, [patients, protocol, logAuditEvent]);
+    }
+  }, [apiHealthy, patients, protocol, logAuditEvent]);
 
   const value = {
     protocol,
@@ -336,7 +564,12 @@ export function TrialProvider({ children }) {
     setPatients,
     auditLogs,
     logAuditEvent,
-    editPatientData
+    editPatientData,
+    // API connection additions
+    apiHealthy,
+    isApiLoading,
+    apiError,
+    refreshData: fetchInitialData
   };
 
   return <TrialContext.Provider value={value}>{children}</TrialContext.Provider>;
