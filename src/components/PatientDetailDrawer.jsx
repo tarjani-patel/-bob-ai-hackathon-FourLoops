@@ -300,9 +300,106 @@ export function PatientDetailDrawer({ patient, patientProfile, deviations = [], 
                 </div>
               ) : (
                 <p className="text-xs text-teal-800 mt-1">
-                  All eCRF records, laboratory panels, and dosage entries for this participant are complete and verified.
+                  All standard eCRF records, laboratory panels, and dosage entries for this participant are currently verified.
                 </p>
               )}
+
+              {/* Interactive eCRF Field Editor for Data Managers */}
+              <div className="mt-3 pt-3 border-t border-teal-200/80">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold text-teal-900 uppercase">
+                    Live eCRF Editor
+                  </span>
+                  <span className="text-[10px] text-teal-700 font-medium">
+                    Updates backend via PATCH /api/patients
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {/* Dose Selector */}
+                  <div className="bg-white p-2 rounded-lg border border-teal-200">
+                    <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">
+                      Cardio-X Dose (Target: 100mg)
+                    </label>
+                    <select
+                      value={patient.medications.find((m) => m.isInvestigational)?.doseMg || 100}
+                      onChange={(e) => {
+                        const newDose = parseInt(e.target.value, 10);
+                        editPatientData(
+                          patient.id,
+                          (pt) => ({
+                            ...pt,
+                            medications: pt.medications.map((m) =>
+                              m.isInvestigational ? { ...m, doseMg: newDose } : m
+                            ),
+                          }),
+                          `Data Manager modified Cardio-X dose to ${newDose}mg QD for subject ${patient.id}.`,
+                          user
+                        );
+                        setSuccessMessage(`Cardio-X dose updated to ${newDose}mg. Click 'Run Compliance Analysis' to verify!`);
+                        setTimeout(() => setSuccessMessage(""), 5000);
+                      }}
+                      className="w-full text-xs font-semibold py-1 px-2 border border-slate-300 rounded bg-slate-50 text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-teal-600"
+                    >
+                      <option value={100}>100 mg QD (Compliant Target)</option>
+                      <option value={50}>50 mg QD (Dose Discrepancy - Major)</option>
+                      <option value={150}>150 mg QD (Dose Discrepancy - Major)</option>
+                      <option value={200}>200 mg QD (Overdose - Critical)</option>
+                    </select>
+                  </div>
+
+                  {/* Prohibited Conmed Selector */}
+                  <div className="bg-white p-2 rounded-lg border border-teal-200">
+                    <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-1">
+                      Concomitant Therapy (CYP3A4)
+                    </label>
+                    <select
+                      value={
+                        patient.medications.some((m) => m.drugName === "Drug-X")
+                          ? "Drug-X"
+                          : patient.medications.some((m) => m.drugName === "Ketoconazole")
+                          ? "Ketoconazole"
+                          : "None"
+                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        editPatientData(
+                          patient.id,
+                          (pt) => {
+                            const nonProhibited = pt.medications.filter(
+                              (m) => m.drugName !== "Drug-X" && m.drugName !== "Ketoconazole"
+                            );
+                            if (val === "None") return { ...pt, medications: nonProhibited };
+                            return {
+                              ...pt,
+                              medications: [
+                                ...nonProhibited,
+                                {
+                                  drugName: val,
+                                  doseMg: val === "Drug-X" ? 50 : 200,
+                                  frequency: "QD",
+                                  isInvestigational: false,
+                                  startDate: "2026-02-01",
+                                  prescriber: "External Specialist",
+                                },
+                              ],
+                            };
+                          },
+                          `Data Manager updated concomitant therapy (${val}) for subject ${patient.id}.`,
+                          user
+                        );
+                        setSuccessMessage(`Concomitant therapy set to '${val}'. Click 'Run Compliance Analysis' to verify!`);
+                        setTimeout(() => setSuccessMessage(""), 5000);
+                      }}
+                      className="w-full text-xs font-semibold py-1 px-2 border border-slate-300 rounded bg-slate-50 text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-teal-600"
+                    >
+                      <option value="None">None (Compliant)</option>
+                      <option value="Drug-X">Drug-X (Prohibited - Critical)</option>
+                      <option value="Ketoconazole">Ketoconazole (Prohibited - Critical)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

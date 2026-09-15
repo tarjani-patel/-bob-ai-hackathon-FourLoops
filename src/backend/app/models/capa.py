@@ -1,8 +1,10 @@
 from typing import List, Optional
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 class CAPAStatusEnum(str, Enum):
+    DRAFT = "Draft"
+    PENDING_REVIEW = "Pending Review"
     REVIEW_PENDING = "Review Pending"
     UNDER_INVESTIGATION = "Under Investigation"
     APPROVED = "Approved"
@@ -36,12 +38,19 @@ class CAPA(BaseModel):
     correctiveAction: str
     preventiveAction: str
     owner: str
+    suggestedOwner: Optional[str] = None
     dueDate: str
     priority: str = "High"
     status: str = "Review Pending"
     humanReviewRequired: bool = True
     lastUpdated: str
     comments: List[CAPAComment] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def populate_suggested_owner(self):
+        if not self.suggestedOwner:
+            self.suggestedOwner = self.owner
+        return self
 
 class CAPACreate(BaseModel):
     siteId: str
