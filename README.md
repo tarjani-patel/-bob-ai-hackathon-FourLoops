@@ -10,8 +10,8 @@
 |---|---|
 | **Team Name** | TrialGuard Team |
 | **Track** | AI (IBM Bob AI Hackathon) |
-| **Team Lead** | Tarjani Patel — [tarjani.patel@ibm.com] |
-| **Members** | Tarjani Patel |
+| **Team Lead** | Dipobithi Das — [dipobithi.2107@ibm.com] |
+| **Members** | Tarjani Patel, Jeet Kumar Vadhia, Jay Kansara |
 
 ---
 
