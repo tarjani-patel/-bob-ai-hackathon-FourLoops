@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Settings, 
   User, 
@@ -13,26 +13,47 @@ import {
   CheckCircle2, 
   RotateCw,
   Save,
-  Check
+  Check,
+  Crown,
+  Lock,
+  Search,
+  ExternalLink
 } from "lucide-react";
 import { useTrial } from "../context/TrialContext.jsx";
+import { useAuth } from "../auth/AuthContext.jsx";
+import { ROLE_CONFIG } from "../auth/roleConfig.js";
+import { RoleBadge } from "../auth/RoleBadge.jsx";
+import { useLocation } from "react-router-dom";
 
 const SECTIONS = [
   { id: "profile", name: "Profile", icon: User },
   { id: "trial", name: "Trial Settings", icon: Sliders },
+  { id: "users", name: "Users & Access (RBAC)", icon: Users },
+  { id: "audit", name: "Audit Trail (21 CFR Part 11)", icon: FileText },
   { id: "notifications", name: "Notifications", icon: Bell },
-  { id: "users", name: "Users & Access", icon: Users },
   { id: "integrations", name: "Integrations", icon: Link },
-  { id: "audit", name: "Audit Logs", icon: FileText },
   { id: "preferences", name: "Preferences", icon: SlidersHorizontal },
-  { id: "display", name: "Display", icon: Monitor },
   { id: "privacy", name: "Data & Privacy", icon: Shield },
 ];
 
 export function SettingsPage() {
-  const { protocol } = useTrial();
-  const [activeTab, setActiveTab] = useState("trial");
+  const { protocol, auditLogs, logAuditEvent } = useTrial();
+  const { user, getStoredUsers } = useAuth();
+  const location = useLocation();
+
+  const storedAccounts = getStoredUsers ? getStoredUsers() : [];
+  const [activeTab, setActiveTab] = useState("users");
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [auditSearch, setAuditSearch] = useState("");
+
+  // Check URL query parameters for default tab
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tabParam = params.get("tab");
+    if (tabParam && SECTIONS.some((s) => s.id === tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [location.search]);
 
   // Form states for trial settings
   const [v1Window, setV1Window] = useState(3);
@@ -45,34 +66,63 @@ export function SettingsPage() {
   // Notification toggles
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [smsCriticalAlerts, setSmsCriticalAlerts] = useState(true);
-  const [inAppSound, setInAppSound] = useState(false);
 
   const handleSave = (e) => {
     e.preventDefault();
     setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    if (logAuditEvent) {
+      logAuditEvent({
+        action: "PROTOCOL_TOLERANCES_UPDATED",
+        entityType: "SETTINGS",
+        entityId: "CT-101",
+        details: `Study Manager updated window tolerances (V1: ±${v1Window}d, V2: ±${v2Window}d, V3: ±${v3Window}d) and dose rules.`,
+        performedBy: user?.name || "Elena Rostova",
+        role: user?.role || "SPONSOR"
+      });
+    }
+    setTimeout(() => setSavedSuccess(false), 3500);
   };
 
+  const filteredAuditLogs = auditLogs.filter((log) => {
+    if (!auditSearch.trim()) return true;
+    const q = auditSearch.toLowerCase();
+    return (
+      log.id.toLowerCase().includes(q) ||
+      log.action.toLowerCase().includes(q) ||
+      log.details.toLowerCase().includes(q) ||
+      log.performedBy.toLowerCase().includes(q) ||
+      log.role.toLowerCase().includes(q)
+    );
+  });
+
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 animate-fade-in">
       {/* Header */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">System Settings & Configuration</h1>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              System Settings & Study Governance
+            </h1>
+            <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+              Sponsor / Study Manager Access
+            </span>
+            <RoleBadge role={user?.role} assignedSite={user?.assignedSite} size="sm" />
+          </div>
           <p className="text-xs text-slate-500 mt-1">
-            Configure compliance engine tolerances, integration webhooks, audit trails, and notification thresholds.
+            Configure compliance engine tolerances, inspect the 21 CFR Part 11 audit log, and manage clinical role privileges.
           </p>
         </div>
 
         {savedSuccess && (
-          <div className="flex items-center gap-1.5 text-xs text-emerald-800 bg-emerald-50 border border-emerald-300 px-3 py-1.5 rounded-lg">
+          <div className="flex items-center gap-1.5 text-xs text-emerald-800 bg-emerald-50 border border-emerald-300 px-3 py-1.5 rounded-lg animate-fade-in">
             <Check className="w-4 h-4 text-emerald-600" />
-            <span className="font-semibold">Settings saved to trial profile</span>
+            <span className="font-semibold">Settings saved and logged to audit trail</span>
           </div>
         )}
       </div>
 
-      {/* Main Settings Layout: Left Nav, Right Details */}
+      {/* Main Settings Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Navigation Sidebar (3 cols) */}
         <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 p-2 shadow-subtle space-y-1">
@@ -86,7 +136,7 @@ export function SettingsPage() {
                 onClick={() => setActiveTab(sec.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors text-left ${
                   isActive
-                    ? "bg-blue-50 text-blue-800 font-bold border border-blue-200"
+                    ? "bg-blue-50 text-blue-800 font-bold border border-blue-200 shadow-xs"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 }`}
               >
@@ -98,46 +148,139 @@ export function SettingsPage() {
         </div>
 
         {/* Setting Content Panel (9 cols) */}
-        <div className="lg:col-span-9 bg-white rounded-xl border border-slate-200 p-6 shadow-subtle">
-          {/* PROFILE */}
-          {activeTab === "profile" && (
-            <div className="space-y-5 text-xs">
-              <div className="border-b border-slate-100 pb-3">
-                <h2 className="text-sm font-bold text-slate-900">User Profile & Investigator Credentials</h2>
-                <p className="text-slate-500 mt-0.5">Your authenticated identity and role permissions</p>
+        <div className="lg:col-span-9 bg-white rounded-xl border border-slate-200 p-6 shadow-subtle min-h-[500px]">
+          
+          {/* USERS & ACCESS (RBAC) */}
+          {activeTab === "users" && (
+            <div className="space-y-4 text-xs">
+              <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">
+                    Role-Based Access Control (RBAC) Roster
+                  </h2>
+                  <p className="text-slate-500 mt-0.5">
+                    Configured roles, permissions, and site data scoping boundaries for Study CT-101.
+                  </p>
+                </div>
+                <span className="font-mono text-[10px] text-slate-400">{storedAccounts.length} Configured Accounts</span>
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-slate-100 border-2 border-slate-300 flex items-center justify-center text-lg font-bold text-slate-700">
-                  AM
-                </div>
+              <div className="space-y-3">
+                {storedAccounts.map((acc) => {
+                  const isCurrent = user?.email?.toLowerCase() === acc.email?.toLowerCase();
+                  return (
+                    <div
+                      key={acc.id}
+                      className={`p-4 rounded-xl border transition-all ${
+                        isCurrent 
+                          ? "bg-blue-50/50 border-blue-300 ring-1 ring-blue-300" 
+                          : "bg-slate-50/50 border-slate-200"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-slate-900">{acc.name}</span>
+                            <RoleBadge role={acc.role} assignedSite={acc.assignedSite} size="sm" />
+                            {isCurrent && (
+                              <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.2 rounded">
+                                ACTIVE SESSION
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-slate-500 text-xs mt-0.5 font-medium">
+                            {acc.email} • {acc.organization}
+                          </div>
+                          <p className="text-slate-600 text-xs mt-1.5 leading-relaxed">
+                            {acc.roleDescription}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t border-slate-200/70 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                        <div className="flex items-center gap-3">
+                          <span>Allowed Routes: <strong>{acc.allowedRoutes.length} of 8</strong></span>
+                          <span>Permissions: <strong>{acc.permissions.length} granular rules</strong></span>
+                        </div>
+                        <div className="font-mono text-[10px] text-slate-500">
+                          Scope: {acc.assignedSite ? `Strictly ${acc.assignedSite}` : "Trial-wide (5 Sites)"}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* AUDIT TRAIL (21 CFR Part 11) */}
+          {activeTab === "audit" && (
+            <div className="space-y-4 text-xs">
+              <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h3 className="font-bold text-slate-900 text-sm">Dr. Alex Mercer, MD, CCRA</h3>
-                  <p className="text-slate-500">Lead Clinical Research Associate & Trial Auditor</p>
-                  <span className="inline-block mt-1 text-[11px] font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                    ID: CRA-USER-88412
-                  </span>
+                  <h2 className="text-sm font-bold text-slate-900">
+                    Electronic Audit Trail (21 CFR Part 11 Compliant)
+                  </h2>
+                  <p className="text-slate-500 mt-0.5">
+                    Immutable, time-stamped log of authentication, analysis runs, data mutations, and CAPA sign-offs.
+                  </p>
                 </div>
+                <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded">
+                  {auditLogs.length} Records Logged
+                </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div>
-                  <label className="block text-slate-500 font-semibold mb-1">Email Address</label>
-                  <input
-                    type="text"
-                    disabled
-                    value="alex.mercer@clinicaltrials.org"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded text-slate-700 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-500 font-semibold mb-1">Assigned Study</label>
-                  <input
-                    type="text"
-                    disabled
-                    value="CT-101 (Cardio-X Phase III)"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded text-slate-700 font-mono"
-                  />
+              {/* Search within Audit Logs */}
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={auditSearch}
+                  onChange={(e) => setAuditSearch(e.target.value)}
+                  placeholder="Filter audit entries by action, user, or details..."
+                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-600 focus:bg-white"
+                />
+              </div>
+
+              {/* Audit Records Table */}
+              <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="overflow-x-auto max-h-96">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 font-semibold text-slate-600 text-[10px] uppercase tracking-wider">
+                      <tr>
+                        <th className="py-2.5 px-3">Log ID</th>
+                        <th className="py-2.5 px-3">Timestamp (UTC)</th>
+                        <th className="py-2.5 px-3">Action</th>
+                        <th className="py-2.5 px-3">Performed By</th>
+                        <th className="py-2.5 px-3">Role</th>
+                        <th className="py-2.5 px-3">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-mono">
+                      {filteredAuditLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="py-2.5 px-3 font-bold text-slate-900 whitespace-nowrap">
+                            {log.id}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap text-[11px]">
+                            {log.timestamp}
+                          </td>
+                          <td className="py-2.5 px-3 whitespace-nowrap font-sans font-bold text-blue-800">
+                            {log.action}
+                          </td>
+                          <td className="py-2.5 px-3 font-sans font-medium text-slate-800 whitespace-nowrap">
+                            {log.performedBy}
+                          </td>
+                          <td className="py-2.5 px-3 whitespace-nowrap font-sans">
+                            <RoleBadge role={log.role} size="sm" />
+                          </td>
+                          <td className="py-2.5 px-3 font-sans text-slate-700 max-w-sm truncate text-[11px]">
+                            {log.details}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -145,54 +288,52 @@ export function SettingsPage() {
 
           {/* TRIAL SETTINGS */}
           {activeTab === "trial" && (
-            <form onSubmit={handleSave} className="space-y-5 text-xs">
+            <form onSubmit={handleSave} className="space-y-6 text-xs">
               <div className="border-b border-slate-100 pb-3">
-                <h2 className="text-sm font-bold text-slate-900">Deterministic Protocol Rules & Tolerances</h2>
-                <p className="text-slate-500 mt-0.5">
-                  Parameters used by the compliance engine to detect visit deviations, dosing faults, and lab omissions
-                </p>
+                <h2 className="text-sm font-bold text-slate-900">Protocol Thresholds & Tolerances</h2>
+                <p className="text-slate-500 mt-0.5">Parameters verified by deterministic compliance rules</p>
               </div>
 
               <div className="space-y-4">
-                <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wide">Visit Window Tolerances (Days)</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-slate-600 font-medium mb-1">Visit 1 (Baseline Day 1)</label>
-                    <div className="flex items-center gap-1.5">
+                <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wide">Visit Window Allowances</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <label className="block text-slate-600 font-medium mb-1">Visit 1 (Day 1 Baseline)</label>
+                    <div className="flex items-center gap-2">
                       <span className="text-slate-400">±</span>
                       <input
                         type="number"
                         value={v1Window}
                         onChange={(e) => setV1Window(Number(e.target.value))}
-                        className="w-20 px-3 py-1.5 border border-slate-300 rounded font-mono text-center font-bold"
+                        className="w-16 px-2 py-1 border border-slate-300 rounded font-mono text-center font-bold"
                       />
                       <span className="text-slate-500">days</span>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-slate-600 font-medium mb-1">Visit 2 (Day 14)</label>
-                    <div className="flex items-center gap-1.5">
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <label className="block text-slate-600 font-medium mb-1">Visit 2 (Day 14 Safety)</label>
+                    <div className="flex items-center gap-2">
                       <span className="text-slate-400">±</span>
                       <input
                         type="number"
                         value={v2Window}
                         onChange={(e) => setV2Window(Number(e.target.value))}
-                        className="w-20 px-3 py-1.5 border border-slate-300 rounded font-mono text-center font-bold"
+                        className="w-16 px-2 py-1 border border-slate-300 rounded font-mono text-center font-bold"
                       />
                       <span className="text-slate-500">days</span>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-slate-600 font-medium mb-1">Visit 3 (Day 28)</label>
-                    <div className="flex items-center gap-1.5">
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <label className="block text-slate-600 font-medium mb-1">Visit 3 (Day 28 Primary)</label>
+                    <div className="flex items-center gap-2">
                       <span className="text-slate-400">±</span>
                       <input
                         type="number"
                         value={v3Window}
                         onChange={(e) => setV3Window(Number(e.target.value))}
-                        className="w-20 px-3 py-1.5 border border-slate-300 rounded font-mono text-center font-bold"
+                        className="w-16 px-2 py-1 border border-slate-300 rounded font-mono text-center font-bold"
                       />
                       <span className="text-slate-500">days</span>
                     </div>
@@ -254,10 +395,45 @@ export function SettingsPage() {
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold text-xs shadow-sm"
                 >
                   <Save className="w-4 h-4" />
-                  <span>Update Protocol Tolerances</span>
+                  <span>Save Tolerances to Audit Log</span>
                 </button>
               </div>
             </form>
+          )}
+
+          {/* PROFILE */}
+          {activeTab === "profile" && (
+            <div className="space-y-4 text-xs">
+              <div className="border-b border-slate-100 pb-3">
+                <h2 className="text-sm font-bold text-slate-900">Current User Session</h2>
+                <p className="text-slate-500 mt-0.5">Verified credentials for Study CT-101</p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 max-w-md space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Name</span>
+                  <span className="font-bold text-slate-900">{user?.name}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Email</span>
+                  <span className="font-mono text-slate-800">{user?.email}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Role</span>
+                  <RoleBadge role={user?.role} assignedSite={user?.assignedSite} size="sm" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Organization</span>
+                  <span className="font-medium text-slate-800">{user?.organization}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Assigned Site Scope</span>
+                  <span className="font-mono text-slate-800 font-bold">
+                    {user?.assignedSite ? user.assignedSite : "Global / Trial-wide"}
+                  </span>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* NOTIFICATIONS */}
@@ -298,41 +474,12 @@ export function SettingsPage() {
             </div>
           )}
 
-          {/* USERS & ACCESS */}
-          {activeTab === "users" && (
-            <div className="space-y-4 text-xs">
-              <div className="border-b border-slate-100 pb-3">
-                <h2 className="text-sm font-bold text-slate-900">User Access & Role-Based Permissions</h2>
-                <p className="text-slate-500 mt-0.5">Active clinical research coordinators and auditors on CT-101</p>
-              </div>
-
-              <div className="space-y-2">
-                {[
-                  { name: "Dr. Alex Mercer", role: "Lead CRA / Compliance Auditor", email: "alex.mercer@clinicaltrials.org", status: "Active" },
-                  { name: "Dr. Evelyn Zhao", role: "Principal Investigator (Site 03)", email: "evelyn.zhao@metrohealth.edu", status: "Active" },
-                  { name: "Sarah Lin", role: "Site Coordinator (Site 01)", email: "lin.sarah@mayo.edu", status: "Active" },
-                  { name: "James Taylor", role: "Site Coordinator (Site 03)", email: "jtaylor@metrohealth.edu", status: "Active" }
-                ].map((u, i) => (
-                  <div key={i} className="p-3 rounded-lg border border-slate-200 flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-slate-900">{u.name}</div>
-                      <div className="text-slate-500">{u.role} • {u.email}</div>
-                    </div>
-                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      {u.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* INTEGRATIONS */}
           {activeTab === "integrations" && (
             <div className="space-y-4 text-xs">
               <div className="border-b border-slate-100 pb-3">
-                <h2 className="text-sm font-bold text-slate-900">Clinical Data Pipelines & AI Connectors</h2>
-                <p className="text-slate-500 mt-0.5">Seamless interoperability with EDC, CTMS, eSource, and IBM watsonx.ai</p>
+                <h2 className="text-sm font-bold text-slate-900">Clinical Data Pipelines & Connectors</h2>
+                <p className="text-slate-500 mt-0.5">Interoperability with EDC, CTMS, eSource, and IBM watsonx.ai</p>
               </div>
 
               <div className="space-y-3">
@@ -355,61 +502,15 @@ export function SettingsPage() {
             </div>
           )}
 
-          {/* AUDIT LOGS */}
-          {activeTab === "audit" && (
-            <div className="space-y-4 text-xs">
-              <div className="border-b border-slate-100 pb-3">
-                <h2 className="text-sm font-bold text-slate-900">21 CFR Part 11 Audit Trail</h2>
-                <p className="text-slate-500 mt-0.5">Immutable audit event log of rule executions and review activities</p>
-              </div>
-
-              <div className="space-y-2 font-mono text-[11px]">
-                {[
-                  { time: "2026-02-15 12:00:02 UTC", user: "SYSTEM", action: "Compliance Engine Run completed: 29 deviations calculated" },
-                  { time: "2026-02-15 11:45:10 UTC", user: "Dr. Alex Mercer", action: "Viewed Hero Comparison for DEV-2026-006 (PT-1042)" },
-                  { time: "2026-02-15 11:30:22 UTC", user: "SYSTEM", action: "Site 03 Risk Escalated to High (73/100)" },
-                  { time: "2026-02-15 10:15:00 UTC", user: "Sarah Lin", action: "Submitted query response for Site 01 protocol procedure" }
-                ].map((log, i) => (
-                  <div key={i} className="p-2.5 rounded bg-slate-50 border border-slate-200 flex items-center justify-between">
-                    <span className="text-slate-500">{log.time}</span>
-                    <span className="text-blue-700 font-bold">[{log.user}]</span>
-                    <span className="text-slate-800 flex-1 ml-3 truncate">{log.action}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* PREFERENCES */}
           {activeTab === "preferences" && (
             <div className="space-y-4 text-xs">
               <div className="border-b border-slate-100 pb-3">
-                <h2 className="text-sm font-bold text-slate-900">Auditor Preferences</h2>
-                <p className="text-slate-500 mt-0.5">Workspace locale, timezones, and report generation defaults</p>
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <label className="block font-medium text-slate-700 mb-1">Reporting Time Zone</label>
-                  <select className="px-3 py-1.5 border border-slate-300 rounded text-slate-800 bg-white">
-                    <option>UTC (Coordinated Universal Time)</option>
-                    <option>US/Eastern (EST/EDT)</option>
-                    <option>US/Central (CST/CDT)</option>
-                    <option>US/Pacific (PST/PDT)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* DISPLAY */}
-          {activeTab === "display" && (
-            <div className="space-y-4 text-xs">
-              <div className="border-b border-slate-100 pb-3">
-                <h2 className="text-sm font-bold text-slate-900">Display & Visual Presentation</h2>
-                <p className="text-slate-500 mt-0.5">High-contrast clinical accessibility themes</p>
+                <h2 className="text-sm font-bold text-slate-900">User Interface & Auditing Preferences</h2>
+                <p className="text-slate-500 mt-0.5">Display formatting and regional regulatory settings</p>
               </div>
               <p className="text-slate-600">
-                TrialGuard AI is formatted in high-legibility enterprise clinical blue with calm neutral backgrounds and WCAG AA contrast for medical audits.
+                Default regulatory standard: <strong>ICH GCP E6(R2) / FDA 21 CFR Part 11</strong>. Timezone: <strong>UTC</strong>.
               </p>
             </div>
           )}
@@ -418,11 +519,11 @@ export function SettingsPage() {
           {activeTab === "privacy" && (
             <div className="space-y-4 text-xs">
               <div className="border-b border-slate-100 pb-3">
-                <h2 className="text-sm font-bold text-slate-900">Data Integrity, HIPAA & GDPR Compliance</h2>
-                <p className="text-slate-500 mt-0.5">Subject de-identification safeguards</p>
+                <h2 className="text-sm font-bold text-slate-900">Data Segregation & HIPAA Privacy Controls</h2>
+                <p className="text-slate-500 mt-0.5">De-identification standards and investigator data shielding</p>
               </div>
               <p className="text-slate-600 leading-relaxed">
-                All subject identifiers are strictly pseudonymized (e.g., PT-1042). No Protected Health Information (PHI) or Personally Identifiable Information (PII) is transmitted outside local secure execution boundaries. Compliant with HIPAA Safe Harbor and GDPR Article 89(1).
+                All patient records are pseudonymized with cryptographic subject IDs (e.g. PT-1042). Site investigators are strictly restricted to their designated investigative site via cryptographic token scope isolation.
               </p>
             </div>
           )}

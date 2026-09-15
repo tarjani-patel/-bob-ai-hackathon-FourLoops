@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { useTrial } from "../context/TrialContext.jsx";
 import { RiskBadge, SeverityBadge } from "../components/RiskBadge.jsx";
+import { useAuth } from "../auth/AuthContext.jsx";
+import { RoleBadge } from "../auth/RoleBadge.jsx";
 
 const REPORT_TEMPLATES = [
   {
@@ -60,20 +62,22 @@ const REPORT_TEMPLATES = [
 
 export function ReportsPage() {
   const { trialMetrics, siteRisks, deviations, protocol, capas } = useTrial();
+  const { user } = useAuth();
   const [selectedReportId, setSelectedReportId] = useState("REP-01");
 
   const activeReport = REPORT_TEMPLATES.find((r) => r.id === selectedReportId) || REPORT_TEMPLATES[0];
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 animate-fade-in">
       {/* Header */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Clinical Compliance Reports</h1>
             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
               Audit-Ready Documentation
             </span>
+            <RoleBadge role={user?.role} assignedSite={user?.assignedSite} size="sm" />
           </div>
           <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
             Automated regulatory reporting generated directly from deterministic trial compliance facts and risk calculations. Suitable for IRB submissions, sponsor audits, and FDA inspections.

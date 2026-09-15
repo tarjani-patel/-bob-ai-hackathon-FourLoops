@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
   Bell, 
   Search, 
@@ -7,25 +7,59 @@ import {
   CheckCircle2, 
   ChevronDown, 
   FlaskConical, 
-  User,
-  ShieldCheck,
-  AlertCircle
+  User, 
+  ShieldCheck, 
+  Lock, 
+  LogOut, 
+  UserPlus, 
+  ExternalLink,
+  ShieldAlert
 } from "lucide-react";
 import { useTrial } from "../context/TrialContext.jsx";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext.jsx";
+import { PERMISSIONS } from "../auth/permissions.js";
+import { RoleBadge } from "../auth/RoleBadge.jsx";
+import { getVisibleNotifications } from "../auth/dataScoping.js";
+import { useNavigate, Link } from "react-router-dom";
 
 export function Header() {
   const { 
     protocol, 
-    unreadNotificationCount, 
+    notifications,
     setIsNotificationModalOpen, 
     runComplianceAnalysis, 
     isAnalyzing,
-    lastAnalysisResult
+    lastAnalysisResult,
+    logAuditEvent
   } = useTrial();
 
+  const { 
+    user, 
+    logout, 
+    can 
+  } = useAuth();
+
   const [searchQuery, setSearchQuery] = useState("");
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
   const navigate = useNavigate();
+
+  // Scoped notifications for badge count
+  const visibleNotifications = getVisibleNotifications(user, notifications);
+  const unreadCount = visibleNotifications.filter((n) => !n.read).length;
+
+  const canRunAnalysis = can(PERMISSIONS.RUN_COMPLIANCE_ANALYSIS);
+
+  // Close dropdown when clicked outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -44,9 +78,34 @@ export function Header() {
     }
   };
 
+  const handleLogout = () => {
+    if (logAuditEvent && user) {
+      logAuditEvent({
+        action: "USER_LOGOUT",
+        entityType: "AUTHENTICATION",
+        entityId: user.userId || user.id,
+        details: `User ${user.name} (${user.email}) signed out.`,
+        performedBy: user.name,
+        role: user.role
+      });
+    }
+    logout();
+    navigate("/login");
+  };
+
+  // Extract initials from user name
+  const userInitials = user?.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase()
+    : "TG";
+
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-30 shadow-subtle">
-      {/* Left: Trial Selector & Status */}
+      {/* Left: Trial Selector & Verification Status */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-lg">
           <FlaskConical className="w-4 h-4 text-blue-700" />
@@ -86,31 +145,41 @@ export function Header() {
         </form>
       </div>
 
-      {/* Right: Actions & User Info */}
+      {/* Right: Role-Aware Actions & User Menu */}
       <div className="flex items-center gap-3">
-        {/* Run Compliance Analysis Button */}
-        <button
-          onClick={runComplianceAnalysis}
-          disabled={isAnalyzing}
-          className={`relative inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition-all ${
-            isAnalyzing
-              ? "bg-blue-800 text-white cursor-wait"
-              : "bg-blue-700 hover:bg-blue-800 text-white hover:shadow"
-          }`}
-          title="Executes deterministic rule verification across all enrolled trial subjects"
-        >
-          {isAnalyzing ? (
-            <>
-              <RotateCw className="w-3.5 h-3.5 animate-spin" />
-              <span>Analyzing Cohort...</span>
-            </>
-          ) : (
-            <>
-              <Play className="w-3.5 h-3.5 fill-current" />
-              <span>Run Compliance Analysis</span>
-            </>
-          )}
-        </button>
+        {/* Run Compliance Analysis Button or Investigator Locked State */}
+        {canRunAnalysis ? (
+          <button
+            onClick={() => runComplianceAnalysis(user)}
+            disabled={isAnalyzing}
+            className={`relative inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition-all ${
+              isAnalyzing
+                ? "bg-blue-800 text-white cursor-wait"
+                : "bg-blue-700 hover:bg-blue-800 text-white hover:shadow"
+            }`}
+            title="Executes deterministic rule verification across enrolled trial subjects"
+          >
+            {isAnalyzing ? (
+              <>
+                <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Analyzing Cohort...</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>Run Compliance Analysis</span>
+              </>
+            )}
+          </button>
+        ) : (
+          <div 
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed"
+            title="Trial-wide compliance verification can only be initiated by CRA, Data Manager, or Sponsor roles."
+          >
+            <Lock className="w-3.5 h-3.5 text-slate-400" />
+            <span>Analysis Managed Centrally</span>
+          </div>
+        )}
 
         {/* Notification Bell */}
         <button
@@ -119,22 +188,80 @@ export function Header() {
           title="Open Compliance & Safety Alerts"
         >
           <Bell className="w-4 h-4" />
-          {unreadNotificationCount > 0 && (
+          {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600 text-white font-bold text-[10px] rounded-full flex items-center justify-center ring-2 ring-white">
-              {unreadNotificationCount}
+              {unreadCount}
             </span>
           )}
         </button>
 
-        {/* User / Profile Info */}
-        <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
-          <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-700 font-semibold text-xs">
-            AM
-          </div>
-          <div className="hidden xl:block text-left">
-            <div className="text-xs font-bold text-slate-800 leading-tight">Dr. Alex Mercer</div>
-            <div className="text-[10px] text-slate-400 font-medium">Lead Compliance Auditor (CRA)</div>
-          </div>
+        {/* Interactive User Avatar & Session Menu */}
+        <div className="relative" ref={userMenuRef}>
+          <button
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            className="flex items-center gap-2.5 pl-2 border-l border-slate-200 hover:opacity-90 focus:outline-none"
+          >
+            <div className="w-8 h-8 rounded-full bg-blue-700 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+              {userInitials}
+            </div>
+            <div className="hidden xl:block text-left">
+              <div className="text-xs font-bold text-slate-800 leading-tight">
+                {user?.name || "Clinical User"}
+              </div>
+              <div className="text-[10px] text-slate-400 font-medium">
+                {user?.roleTitle || user?.role || "Reviewer"}
+              </div>
+            </div>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden xl:block" />
+          </button>
+
+          {/* User Dropdown Menu */}
+          {isUserMenuOpen && (
+            <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 animate-fade-in">
+              {/* Active Profile Info */}
+              <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Active Account
+                  </span>
+                  <RoleBadge role={user?.role} assignedSite={user?.assignedSite} size="sm" />
+                </div>
+                <div className="font-bold text-sm text-slate-900">{user?.name}</div>
+                <div className="text-xs text-slate-500 font-mono">{user?.email}</div>
+                <div className="text-[11px] text-slate-500 mt-1">
+                  {user?.organization || "Clinical Research Operations"}
+                </div>
+                {user?.assignedSite && (
+                  <div className="mt-1 text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded inline-block border border-purple-200">
+                    Assigned Site: {user.assignedSite}
+                  </div>
+                )}
+              </div>
+
+              {/* Account Actions */}
+              <div className="p-1 border-b border-slate-100">
+                <Link
+                  to="/register"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded-lg transition-colors font-medium"
+                >
+                  <UserPlus className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Register Another Account</span>
+                </Link>
+              </div>
+
+              {/* Logout button */}
+              <div className="p-1">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 rounded-lg transition-colors font-semibold"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>

@@ -8,27 +8,35 @@ import {
   Sparkles, 
   FileCheck, 
   ChevronRight, 
-  ArrowUpRight,
-  Stethoscope,
-  Search,
-  Filter
+  ArrowUpRight, 
+  Stethoscope, 
+  Search, 
+  Filter, 
+  Lock 
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useTrial } from "../context/TrialContext.jsx";
+import { useAuth } from "../auth/AuthContext.jsx";
 import { RiskBadge, SeverityBadge, TrendBadge } from "../components/RiskBadge.jsx";
+import { RoleBadge } from "../auth/RoleBadge.jsx";
 import { SiteDetailDrawer } from "../components/SiteDetailDrawer.jsx";
 import { DeviationDetailDrawer } from "../components/DeviationDetailDrawer.jsx";
+import { AccessRestricted } from "../auth/AccessRestricted.jsx";
+import { getVisibleSites } from "../auth/dataScoping.js";
 
 export function SiteRiskPage() {
   const { siteRisks, deviations } = useTrial();
+  const { user, isInvestigator } = useAuth();
   const location = useLocation();
 
-  // NO site selected by default -> NO modal open initially!
   const [selectedSiteId, setSelectedSiteId] = useState(null);
   const [selectedDeviation, setSelectedDeviation] = useState(null);
   const [filterBand, setFilterBand] = useState("All");
 
-  // Support deep-linking via query parameter if explicitly supplied by user/search
+  // Scoped sites
+  const scopedSites = getVisibleSites(user, siteRisks);
+
+  // Support deep-linking via query parameter
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const selectParam = params.get("select");
@@ -38,7 +46,20 @@ export function SiteRiskPage() {
     }
   }, [location.search, siteRisks]);
 
-  const filteredSites = siteRisks.filter((s) => {
+  // If Investigator, verify they aren't attempting to inspect another site
+  const isSelectedSiteForbidden = 
+    isInvestigator && selectedSiteId && selectedSiteId !== user.assignedSite;
+
+  if (isSelectedSiteForbidden) {
+    return (
+      <AccessRestricted
+        restrictedSiteId={selectedSiteId}
+        customMessage="You only have access to your assigned clinical site."
+      />
+    );
+  }
+
+  const filteredSites = scopedSites.filter((s) => {
     if (filterBand !== "All" && s.riskBand !== filterBand) return false;
     return true;
   });
@@ -46,39 +67,51 @@ export function SiteRiskPage() {
   const selectedSite = selectedSiteId ? siteRisks.find((s) => s.siteId === selectedSiteId) : null;
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 animate-fade-in">
       {/* Header */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Site Risk & Monitoring Index</h1>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              {isInvestigator ? "Site 03 Risk Profile & Monitoring Status" : "Site Risk & Monitoring Index"}
+            </h1>
             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-              5 Active Investigation Centers
+              {isInvestigator ? "Assigned Center: Metro General" : "5 Active Investigation Centers"}
             </span>
+            <RoleBadge role={user?.role} assignedSite={user?.assignedSite} size="sm" />
           </div>
           <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
-            Deterministic risk engine continuously ranks trial investigation sites from patient deviation density and severity. Click any site to inspect its detailed risk drivers, predicted trajectory, and recommended monitoring actions.
+            {isInvestigator
+              ? "Objective risk score and violation trends for Metro General Health Science Center (SITE-03) under ICH GCP E6(R2)."
+              : "Deterministic risk engine continuously ranks trial investigation sites from patient deviation density and severity. Click any site to inspect risk drivers and predictive trajectory."}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs">
-          <span className="font-semibold text-slate-500">Filter:</span>
-          <select
-            value={filterBand}
-            onChange={(e) => setFilterBand(e.target.value)}
-            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:bg-white"
-          >
-            <option value="All">All Risk Bands ({siteRisks.length})</option>
-            <option value="High">High Risk (61–100)</option>
-            <option value="Medium">Medium Risk (31–60)</option>
-            <option value="Low">Low Risk (0–30)</option>
-          </select>
-        </div>
+        {!isInvestigator ? (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="font-semibold text-slate-500">Filter:</span>
+            <select
+              value={filterBand}
+              onChange={(e) => setFilterBand(e.target.value)}
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:bg-white"
+            >
+              <option value="All">All Risk Bands ({siteRisks.length})</option>
+              <option value="High">High Risk (61–100)</option>
+              <option value="Medium">Medium Risk (31–60)</option>
+              <option value="Low">Low Risk (0–30)</option>
+            </select>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-lg text-purple-800 text-xs font-bold">
+            <Lock className="w-3.5 h-3.5 text-purple-600" />
+            <span>Site Scoped: SITE-03</span>
+          </div>
+        )}
       </div>
 
-      {/* Sites Grid: Display all 5 sites clearly with cards & metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredSites.map((site, index) => {
+      {/* Sites Grid */}
+      <div className={`grid gap-5 ${isInvestigator ? "grid-cols-1 max-w-2xl" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"}`}>
+        {filteredSites.map((site) => {
           const isHigh = site.riskBand === "High";
           const isMedium = site.riskBand === "Medium";
 
@@ -95,167 +128,67 @@ export function SiteRiskPage() {
               }`}
             >
               <div>
-                {/* Card Top: Rank & Badges */}
+                {/* Card Top */}
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center font-mono font-bold text-xs">
-                      #{index + 1}
-                    </span>
-                    <span className="font-mono text-xs font-bold text-slate-900 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">
+                    <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
                       {site.siteCode}
                     </span>
-                    <RiskBadge band={site.riskBand} score={site.score} size="sm" />
+                    <RiskBadge band={site.riskBand} score={site.score} />
                   </div>
-
-                  <TrendBadge trend={site.trend} projectedChange={site.projectedChange} />
+                  <TrendBadge direction={site.trendDirection} percentage={site.trendChangePercent} />
                 </div>
 
-                {/* Site Title */}
-                <h2 className="mt-3 text-base font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
+                {/* Site Name */}
+                <h3 className="mt-3 font-bold text-slate-900 text-sm group-hover:text-blue-700 transition-colors">
                   {site.siteName}
-                </h2>
+                </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {site.location} • PI: <span className="font-medium text-slate-700">{site.pi}</span>
+                  Principal Investigator: <span className="font-medium text-slate-700">{site.piName}</span>
                 </p>
 
-                {/* Score & Predicted Forecast */}
-                <div className="mt-4 grid grid-cols-2 gap-2 p-3 rounded-lg bg-slate-50 border border-slate-100 text-xs">
+                {/* Metrics */}
+                <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400">Current Risk</span>
-                    <div className={`text-xl font-bold font-mono ${isHigh ? "text-rose-700" : isMedium ? "text-amber-700" : "text-emerald-700"}`}>
-                      {site.score}<span className="text-xs text-slate-400 font-normal">/100</span>
-                    </div>
+                    <span className="text-[11px] text-slate-400">Enrolled Cohort</span>
+                    <div className="font-semibold text-slate-800 mt-0.5">{site.patientCount} Patients</div>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-blue-600">30-Day Predicted</span>
-                    <div className="text-xl font-bold font-mono text-blue-900">
-                      {site.predictedScore}<span className="text-xs text-blue-400 font-normal">/100</span>
+                    <span className="text-[11px] text-slate-400">Active Deviations</span>
+                    <div className="font-semibold text-rose-600 mt-0.5 font-mono">
+                      {site.deviationCount} ({site.criticalDeviations} Critical)
                     </div>
                   </div>
                 </div>
 
-                {/* Cohort & Deviation Breakdown */}
-                <div className="mt-3 space-y-1 text-xs">
-                  <div className="flex items-center justify-between text-slate-600">
-                    <span>Deviations Recorded:</span>
-                    <span className="font-mono font-bold text-slate-900">
-                      {site.deviationCount} ({site.criticalCount} Critical, {site.majorCount} Major)
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-slate-600">
-                    <span>Cohort Contamination:</span>
-                    <span className="font-mono font-bold text-slate-900">
-                      {site.affectedPatientCount} of {site.patientCount} subjects ({((site.affectedPatientCount / (site.patientCount || 1)) * 100).toFixed(0)}%)
-                    </span>
-                  </div>
+                {/* Drivers summary */}
+                <div className="mt-3 p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-[11px] text-slate-600">
+                  <span className="font-semibold text-slate-800">Primary Risk Driver: </span>
+                  {site.topDrivers?.[0]?.driver || "Visit window adherence"}
                 </div>
-
-                {/* Key Driver Badge */}
-                {site.riskDrivers && site.riskDrivers.length > 0 && (
-                  <div className="mt-3 p-2 rounded bg-slate-50 border border-slate-200 text-[11px] text-slate-600 truncate">
-                    <strong className="text-slate-700">Driver:</strong> {site.riskDrivers[0]}
-                  </div>
-                )}
               </div>
 
-              {/* Action Link */}
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                <span className="text-slate-400 text-[11px]">CRA: {site.cra}</span>
-                <span className="font-semibold text-blue-700 group-hover:text-blue-900 flex items-center gap-0.5">
-                  Analyze Site Risk →
-                </span>
+              {/* Card Footer */}
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-blue-700 font-semibold">
+                <span>View Comprehensive Risk Breakdown</span>
+                <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Full 5-Site Comparison Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-subtle overflow-hidden">
-        <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-bold text-slate-900">Comparative Site Risk Matrix</h2>
-            <p className="text-xs text-slate-500">Cross-center metrics calculated by deterministic risk engine</p>
-          </div>
-          <span className="text-xs text-slate-400">Click any row to open deep dive</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                <th className="py-3 px-4">Rank</th>
-                <th className="py-3 px-4">Site Code</th>
-                <th className="py-3 px-4">Investigation Center</th>
-                <th className="py-3 px-4">Location & PI</th>
-                <th className="py-3 px-4">Risk Score</th>
-                <th className="py-3 px-4">Band</th>
-                <th className="py-3 px-4">30-Day Trend</th>
-                <th className="py-3 px-4">Deviations</th>
-                <th className="py-3 px-4">Cohort Impact</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {siteRisks.map((site, idx) => (
-                <tr
-                  key={site.siteId}
-                  onClick={() => setSelectedSiteId(site.siteId)}
-                  className="hover:bg-blue-50/30 transition-colors cursor-pointer group"
-                >
-                  <td className="py-3 px-4 font-mono font-bold text-slate-600">
-                    #{idx + 1}
-                  </td>
-                  <td className="py-3 px-4 font-mono font-bold text-blue-700">
-                    {site.siteCode}
-                  </td>
-                  <td className="py-3 px-4 font-semibold text-slate-900">
-                    {site.siteName}
-                  </td>
-                  <td className="py-3 px-4 text-slate-600">
-                    {site.location} • <span className="text-slate-500">{site.pi}</span>
-                  </td>
-                  <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                    {site.score}/100
-                  </td>
-                  <td className="py-3 px-4">
-                    <RiskBadge band={site.riskBand} size="sm" />
-                  </td>
-                  <td className="py-3 px-4">
-                    <TrendBadge trend={site.trend} projectedChange={site.projectedChange} />
-                  </td>
-                  <td className="py-3 px-4 font-mono font-semibold text-slate-800">
-                    {site.deviationCount} <span className="text-[10px] text-slate-400">({site.criticalCount} crit)</span>
-                  </td>
-                  <td className="py-3 px-4 font-mono text-slate-700">
-                    {site.affectedPatientCount}/{site.patientCount} ({((site.affectedPatientCount / (site.patientCount || 1)) * 100).toFixed(0)}%)
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedSiteId(site.siteId);
-                      }}
-                      className="text-xs font-semibold text-blue-700 group-hover:text-blue-900 bg-white border border-slate-200 group-hover:border-blue-300 px-2.5 py-1 rounded transition-colors"
-                    >
-                      Inspect →
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Selected Site Detail Drawer (Only rendered when selectedSite is non-null) */}
+      {/* Drawers */}
       <SiteDetailDrawer
         site={selectedSite}
+        deviations={deviations}
         onClose={() => setSelectedSiteId(null)}
-        onSelectDeviation={(dev) => setSelectedDeviation(dev)}
+        onSelectDeviation={(dev) => {
+          setSelectedSiteId(null);
+          setSelectedDeviation(dev);
+        }}
       />
 
-      {/* Linked Deviation Detail Drawer */}
       <DeviationDetailDrawer
         deviation={selectedDeviation}
         onClose={() => setSelectedDeviation(null)}

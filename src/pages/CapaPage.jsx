@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { 
   ShieldCheck, 
   AlertTriangle, 
@@ -9,21 +9,31 @@ import {
   FileDown, 
   Search, 
   Filter, 
-  ChevronRight,
-  Sparkles,
-  Play
+  ChevronRight, 
+  Sparkles, 
+  Play, 
+  Lock 
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useTrial } from "../context/TrialContext.jsx";
+import { useAuth } from "../auth/AuthContext.jsx";
 import { CapaDetailDrawer } from "../components/CapaDetailDrawer.jsx";
+import { RoleBadge } from "../auth/RoleBadge.jsx";
+import { getVisibleCapas } from "../auth/dataScoping.js";
 
 export function CapaPage() {
   const { capas, updateCapaStatus, hasAnalyzed, runComplianceAnalysis, isAnalyzing } = useTrial();
+  const { user, isInvestigator, isSponsor } = useAuth();
   const location = useLocation();
 
   const [selectedCapa, setSelectedCapa] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("All");
+
+  // Scoped CAPAs
+  const scopedCapas = useMemo(() => {
+    return getVisibleCapas(user, capas);
+  }, [user, capas]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -33,12 +43,12 @@ export function CapaPage() {
       setSearchQuery(siteParam);
     }
     if (selectParam) {
-      const match = capas.find((c) => c.id === selectParam);
+      const match = scopedCapas.find((c) => c.id === selectParam);
       if (match) setSelectedCapa(match);
     }
-  }, [location.search, capas]);
+  }, [location.search, scopedCapas]);
 
-  const filteredCapas = capas.filter((c) => {
+  const filteredCapas = scopedCapas.filter((c) => {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchesId = c.id.toLowerCase().includes(q);
@@ -51,25 +61,28 @@ export function CapaPage() {
   });
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 animate-fade-in">
       {/* Header */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-              CAPA Oversight & Preventive Actions
+              {isInvestigator ? "Site 03 Corrective & Preventive Actions (CAPA)" : "CAPA Oversight & Preventive Actions"}
             </h1>
             <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
-              {capas.length} Active Plans
+              {scopedCapas.length} Active Plans
             </span>
+            <RoleBadge role={user?.role} assignedSite={user?.assignedSite} size="sm" />
           </div>
           <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
-            Autonomous Corrective and Preventive Action plans generated directly from deviation clusters and site risk anomalies. Every action plan mandates qualified clinical auditor sign-off.
+            {isInvestigator
+              ? "Autonomous action plans generated for Metro General scheduling and compliance anomalies. Principal Investigator response requested."
+              : "Autonomous Corrective and Preventive Action plans generated directly from deviation clusters and site risk anomalies."}
           </p>
         </div>
 
         <button
-          onClick={() => alert("Comprehensive CAPA Audit Dossier exported for IRB & Sponsor review.")}
+          onClick={() => alert(`Comprehensive CAPA Audit Dossier (${scopedCapas.length} plans) exported.`)}
           className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold"
         >
           <FileDown className="w-4 h-4" />
@@ -85,160 +98,119 @@ export function CapaPage() {
           </div>
           <div>
             <h2 className="text-xs font-bold text-amber-900 uppercase tracking-wide">
-              Mandatory Human Review Required
+              Mandatory Sponsor / PI Authorization Required
             </h2>
             <p className="text-xs text-amber-800 mt-0.5">
-              TrialGuard AI proposes root causes and corrective steps from deterministic facts. In accordance with FDA 21 CFR 312 and GCP guidelines, automated recommendations require Principal Investigator / Lead CRA approval prior to formal execution.
+              TrialGuard AI proposes root causes and corrective steps from deterministic facts. In accordance with FDA 21 CFR 312 and GCP guidelines, final approval requires Sponsor / Study Manager authorization.
             </p>
           </div>
         </div>
       </div>
 
       {/* If unanalyzed state */}
-      {!hasAnalyzed && capas.length === 0 && (
+      {!hasAnalyzed && scopedCapas.length === 0 && (
         <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-3">
           <ShieldCheck className="w-10 h-10 text-slate-400 mx-auto" />
-          <h3 className="text-sm font-bold text-slate-800">Awaiting Cohort Compliance Scan</h3>
+          <h3 className="text-sm font-bold text-slate-800">No CAPAs Generated Yet</h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Run the compliance analysis from the Dashboard or click below to analyze deviation clusters and generate targeted CAPA plans.
+            Autonomous CAPAs are formulated dynamically when the compliance engine detects severe deviation clusters and high-risk site anomalies.
           </p>
-          <button
-            onClick={runComplianceAnalysis}
-            disabled={isAnalyzing}
-            className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold inline-flex items-center gap-2"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Run Compliance Analysis Now</span>
-          </button>
-        </div>
-      )}
-
-      {/* Search & Filter Toolbar */}
-      {capas.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search CAPA ID, problem, or site (e.g. SITE-03)..."
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-600"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-slate-500 font-medium">Priority:</span>
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none"
+          {user?.permissions?.includes("RUN_COMPLIANCE_ANALYSIS") && (
+            <button
+              onClick={() => runComplianceAnalysis(user)}
+              disabled={isAnalyzing}
+              className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-blue-700 text-white rounded-lg text-xs font-bold hover:bg-blue-800"
             >
-              <option value="All">All Priorities</option>
-              <option value="Critical">Critical</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-            </select>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="text-blue-700 hover:text-blue-900 font-semibold px-2 py-1"
-              >
-                Clear
-              </button>
-            )}
-          </div>
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Run Compliance Analysis to Generate CAPAs</span>
+            </button>
+          )}
         </div>
       )}
 
-      {/* CAPA Cards */}
-      {capas.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredCapas.map((c) => (
+      {/* CAPA Cards List */}
+      <div className="space-y-3">
+        {filteredCapas.map((capa) => {
+          const isApproved = capa.status === "Approved";
+          const isPending = capa.status === "Draft" || capa.status === "Under Review" || capa.status === "Open";
+
+          return (
             <div
-              key={c.id}
-              onClick={() => setSelectedCapa(c)}
-              className="bg-white rounded-xl border border-slate-200 hover:border-blue-400 p-5 shadow-subtle hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+              key={capa.id}
+              onClick={() => setSelectedCapa(capa)}
+              className="bg-white rounded-xl border border-slate-200 p-5 shadow-subtle hover:border-blue-400 hover:shadow-md transition-all cursor-pointer flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group"
             >
-              <div>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-slate-900 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
-                      {c.id}
-                    </span>
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${
-                      c.priority === "Critical"
-                        ? "bg-rose-50 text-rose-800 border-rose-200"
-                        : "bg-amber-50 text-amber-800 border-amber-200"
-                    }`}>
-                      {c.priority} Priority
-                    </span>
-                  </div>
-
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border flex items-center gap-1 ${
-                    c.status === "Approved"
-                      ? "text-emerald-800 bg-emerald-50 border-emerald-300"
-                      : "text-amber-700 bg-amber-50 border-amber-200"
-                  }`}>
-                    {c.status === "Approved" ? (
-                      <>
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                        Approved
-                      </>
-                    ) : (
-                      <>
-                        <UserCheck className="w-3 h-3" />
-                        Review Required
-                      </>
-                    )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                  <span className="font-mono text-xs font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded">
+                    {capa.id}
+                  </span>
+                  <span
+                    className={`text-xs font-semibold px-2 py-0.5 rounded border ${
+                      isApproved
+                        ? "bg-emerald-100 text-emerald-800 border-emerald-300 font-bold"
+                        : "bg-amber-100 text-amber-800 border-amber-300"
+                    }`}
+                  >
+                    {capa.status}
+                  </span>
+                  <span
+                    className={`text-xs font-bold px-2 py-0.5 rounded ${
+                      capa.priority === "High"
+                        ? "bg-rose-100 text-rose-800"
+                        : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {capa.priority}
+                  </span>
+                  <span className="text-xs text-slate-500 font-medium">
+                    {capa.siteName}
                   </span>
                 </div>
 
-                <h2 className="mt-2.5 text-sm font-bold text-slate-900 leading-snug">
-                  {c.title}
-                </h2>
-
-                <p className="mt-1.5 text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                  {c.problemStatement}
+                <h3 className="font-bold text-sm text-slate-900 group-hover:text-blue-700 transition-colors">
+                  {capa.title}
+                </h3>
+                <p className="text-xs text-slate-600 mt-1 line-clamp-1">
+                  {capa.problemStatement}
                 </p>
 
-                <div className="mt-3 p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Targeted Preventative Action
-                  </div>
-                  <div className="mt-1 text-slate-700 line-clamp-2 font-medium">
-                    {c.preventiveAction.split("\n")[0]}
-                  </div>
+                <div className="mt-2.5 flex items-center gap-4 text-xs text-slate-500 flex-wrap">
+                  <span>Assigned: <strong className="text-slate-700">{capa.owner}</strong></span>
+                  <span>Category: <strong className="text-slate-700">{capa.category}</strong></span>
+                  <span>Deviations: <strong className="text-blue-700 font-mono">{capa.linkedDeviationsCount}</strong></span>
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <div>
-                  <span>Site: </span>
-                  <span className="font-semibold text-slate-800 truncate max-w-[140px] inline-block align-bottom">
-                    {c.siteName}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                {isApproved ? (
+                  <span className="inline-flex items-center gap-1 text-emerald-800 font-bold text-xs bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Approved by Sponsor</span>
                   </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-slate-700">Due: {c.dueDate}</span>
-                  <span className="font-semibold text-blue-700 flex items-center gap-0.5">
-                    Inspect →
+                ) : isSponsor ? (
+                  <span className="inline-flex items-center gap-1 text-amber-800 font-bold text-xs bg-amber-50 px-2.5 py-1 rounded border border-amber-200">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Requires Sponsor Sign-off</span>
                   </span>
-                </div>
+                ) : isInvestigator ? (
+                  <span className="inline-flex items-center gap-1 text-purple-800 font-bold text-xs bg-purple-50 px-2.5 py-1 rounded border border-purple-200">
+                    <span>Investigator Response Required</span>
+                  </span>
+                ) : null}
+
+                <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
 
-      {/* CAPA Detail Drawer */}
+      {/* Drawer */}
       <CapaDetailDrawer
         capa={selectedCapa}
         onClose={() => setSelectedCapa(null)}
-        onUpdateStatus={(capaId, newStatus) => {
-          updateCapaStatus(capaId, newStatus);
-          setSelectedCapa((prev) => (prev ? { ...prev, status: newStatus } : null));
-        }}
+        onUpdateStatus={updateCapaStatus}
       />
     </div>
   );

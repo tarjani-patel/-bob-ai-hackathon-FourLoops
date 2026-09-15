@@ -6,26 +6,40 @@ import {
   ChevronRight, 
   CheckCircle2, 
   AlertTriangle, 
-  Calendar,
-  XCircle,
-  Clock,
-  Download
+  Calendar, 
+  XCircle, 
+  Clock, 
+  Download, 
+  Database, 
+  Lock, 
+  ShieldAlert 
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useTrial } from "../context/TrialContext.jsx";
+import { useAuth } from "../auth/AuthContext.jsx";
 import { RiskBadge, SeverityBadge } from "../components/RiskBadge.jsx";
+import { RoleBadge } from "../auth/RoleBadge.jsx";
 import { PatientDetailDrawer } from "../components/PatientDetailDrawer.jsx";
 import { DeviationDetailDrawer } from "../components/DeviationDetailDrawer.jsx";
+import { getVisiblePatients } from "../auth/dataScoping.js";
+import { AccessRestricted } from "../auth/AccessRestricted.jsx";
 
 export function PatientsPage() {
   const { patients, patientProfiles, deviations } = useTrial();
+  const { user, isInvestigator, isDataManager } = useAuth();
   const location = useLocation();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [siteFilter, setSiteFilter] = useState("All");
   const [riskFilter, setRiskFilter] = useState("All");
+  const [dataIssuesOnly, setDataIssuesOnly] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState(null);
   const [selectedDeviation, setSelectedDeviation] = useState(null);
+
+  // Scoped patients array based on active role
+  const scopedPatients = useMemo(() => {
+    return getVisiblePatients(user, patients);
+  }, [user, patients]);
 
   // Check URL query parameters for deep-linking
   useEffect(() => {
@@ -43,19 +57,26 @@ export function PatientsPage() {
 
   // Combine patient record with profile
   const enrichedPatients = useMemo(() => {
-    return patients.map((pt) => {
+    return scopedPatients.map((pt) => {
       const prof = patientProfiles.find((p) => p.patientId === pt.id) || {
         totalRiskScore: 0,
         riskBand: "Low",
         compliancePercentage: 100,
         deviationCount: 0
       };
+
+      const hasMissingCbc = !pt.labs.some((l) => l.labName.includes("CBC"));
+      const nonStandardMed = pt.medications.find((m) => m.drugName === "Cardio-X" && m.doseMg !== 100);
+      const hasMissingV2Vitals = pt.visits.some((v) => v.visitNumber === 2 && !v.vitals);
+      const hasDataIssue = hasMissingCbc || Boolean(nonStandardMed) || hasMissingV2Vitals;
+
       return {
         ...pt,
-        profile: prof
+        profile: prof,
+        hasDataIssue
       };
     });
-  }, [patients, patientProfiles]);
+  }, [scopedPatients, patientProfiles]);
 
   // Filtered list
   const filteredPatients = useMemo(() => {
@@ -68,8 +89,8 @@ export function PatientsPage() {
         if (!matchesId && !matchesSite) return false;
       }
 
-      // Site filter
-      if (siteFilter !== "All" && pt.siteId !== siteFilter) {
+      // Site filter (only active if not investigator)
+      if (!isInvestigator && siteFilter !== "All" && pt.siteId !== siteFilter) {
         return false;
       }
 
@@ -78,171 +99,228 @@ export function PatientsPage() {
         return false;
       }
 
+      // Data Manager Data Issue filter
+      if (dataIssuesOnly && !pt.hasDataIssue) {
+        return false;
+      }
+
       return true;
     });
-  }, [enrichedPatients, searchQuery, siteFilter, riskFilter]);
+  }, [enrichedPatients, searchQuery, siteFilter, riskFilter, dataIssuesOnly, isInvestigator]);
 
-  const selectedPatient = patients.find((p) => p.id === selectedPatientId);
+  // Check if selected patient violates investigator scoping
+  const selectedPatientObj = patients.find((p) => p.id === selectedPatientId);
+  const isSelectedPatientForbidden = 
+    isInvestigator && selectedPatientObj && selectedPatientObj.siteId !== user.assignedSite;
+
   const selectedProfile = patientProfiles.find((p) => p.patientId === selectedPatientId);
 
+  // If investigator attempted to access a patient from another site via URL
+  if (isSelectedPatientForbidden) {
+    return (
+      <AccessRestricted
+        restrictedSiteId={selectedPatientObj.siteId}
+        customMessage="You only have access to your assigned clinical site."
+      />
+    );
+  }
+
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 animate-fade-in">
       {/* Top Header */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Participant Cohort Directory</h1>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              {isInvestigator ? "Site 03 Participant Cohort" : "Participant Cohort Directory"}
+            </h1>
             <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
-              {patients.length} Enrolled
+              {scopedPatients.length} Enrolled {isInvestigator ? "(Metro Gen)" : "(5 Sites)"}
             </span>
+            <RoleBadge role={user?.role} assignedSite={user?.assignedSite} size="sm" />
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Real-time participant adherence records across all 5 study sites. Click any row to view full visit history.
+            {isInvestigator
+              ? "Confidential patient safety and visit adherence records for Metro General Health Science Center."
+              : "Real-time participant adherence records across trial sites. Click any row to inspect visit history."}
           </p>
         </div>
 
-        <button
-          onClick={() => alert("Exported Subject Compliance Register in CSV format.")}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold"
-        >
-          <Download className="w-4 h-4" />
-          <span>Export Cohort CSV</span>
-        </button>
+        {/* Data Manager filter toggle or Export */}
+        <div className="flex items-center gap-2">
+          {isDataManager && (
+            <button
+              onClick={() => setDataIssuesOnly(!dataIssuesOnly)}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                dataIssuesOnly
+                  ? "bg-teal-700 text-white shadow-xs"
+                  : "bg-teal-50 border border-teal-300 text-teal-800 hover:bg-teal-100"
+              }`}
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>{dataIssuesOnly ? "Showing eCRF Queries" : "Filter: eCRF Queries Pending"}</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => alert(`Participant Export: ${scopedPatients.length} records compiled for GCP monitoring.`)}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export Roster</span>
+          </button>
+        </div>
       </div>
 
-      {/* Filter & Search Toolbar */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-subtle flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+      {/* Filter and Search Bar */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-subtle flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         {/* Search */}
-        <div className="relative flex-1 max-w-sm">
+        <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search patient ID (e.g. PT-1042)..."
-            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-600"
+            placeholder={isInvestigator ? "Search Site 03 participant (PT-1042)..." : "Search participant ID (PT-1042), site name..."}
+            className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-600 focus:bg-white"
           />
         </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="flex items-center gap-1.5 text-slate-500 font-medium">
-            <Filter className="w-3.5 h-3.5" />
-            <span>Filters:</span>
-          </div>
-
-          <select
-            value={siteFilter}
-            onChange={(e) => setSiteFilter(e.target.value)}
-            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:bg-white"
-          >
-            <option value="All">All Sites (5)</option>
-            <option value="SITE-01">Site 01 (Mayo Clinic)</option>
-            <option value="SITE-02">Site 02 (Johns Hopkins)</option>
-            <option value="SITE-03">Site 03 (Metro General)</option>
-            <option value="SITE-04">Site 04 (Stanford)</option>
-            <option value="SITE-05">Site 05 (Boston)</option>
-          </select>
-
-          <select
-            value={riskFilter}
-            onChange={(e) => setRiskFilter(e.target.value)}
-            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:bg-white"
-          >
-            <option value="All">All Risk Bands</option>
-            <option value="High">High Risk</option>
-            <option value="Medium">Medium Risk</option>
-            <option value="Low">Low Risk</option>
-          </select>
-
-          {(searchQuery || siteFilter !== "All" || riskFilter !== "All") && (
-            <button
-              onClick={() => {
-                setSearchQuery("");
-                setSiteFilter("All");
-                setRiskFilter("All");
-              }}
-              className="text-blue-700 hover:text-blue-900 font-semibold px-2 py-1"
-            >
-              Reset
-            </button>
+        {/* Filter dropdowns */}
+        <div className="flex flex-wrap items-center gap-2.5 text-xs">
+          {/* Site Filter: Disabled / Hidden for Investigator */}
+          {!isInvestigator ? (
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500 font-medium">Site:</span>
+              <select
+                value={siteFilter}
+                onChange={(e) => setSiteFilter(e.target.value)}
+                className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none"
+              >
+                <option value="All">All Sites (5)</option>
+                <option value="SITE-01">Site 01 (Mayo Clinic)</option>
+                <option value="SITE-02">Site 02 (Johns Hopkins)</option>
+                <option value="SITE-03">Site 03 (Metro General)</option>
+                <option value="SITE-04">Site 04 (UCSF Medical)</option>
+                <option value="SITE-05">Site 05 (MD Anderson)</option>
+              </select>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 border border-purple-200 rounded-lg text-purple-800 text-[11px] font-bold">
+              <Lock className="w-3 h-3 text-purple-600" />
+              <span>Site: Metro General (SITE-03 Only)</span>
+            </div>
           )}
+
+          {/* Risk Filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-500 font-medium">Risk:</span>
+            <select
+              value={riskFilter}
+              onChange={(e) => setRiskFilter(e.target.value)}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none"
+            >
+              <option value="All">All Risk Bands</option>
+              <option value="High">High Risk</option>
+              <option value="Medium">Medium Risk</option>
+              <option value="Low">Low Risk</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Patient Data Table */}
+      {/* Participant Roster Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-subtle overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                <th className="py-3 px-4">Patient ID</th>
-                <th className="py-3 px-4">Clinical Site</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Compliance</th>
-                <th className="py-3 px-4">Risk Score</th>
-                <th className="py-3 px-4">Last Completed Visit</th>
+              <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[10px] tracking-wider">
+                <th className="py-3 px-4">Subject ID</th>
+                <th className="py-3 px-4">Site Location</th>
+                <th className="py-3 px-4">Demographics</th>
+                <th className="py-3 px-4">Enrolled</th>
+                <th className="py-3 px-4">Visit Progress</th>
+                <th className="py-3 px-4">Compliance %</th>
+                <th className="py-3 px-4">Risk Band</th>
                 <th className="py-3 px-4">Deviations</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+                <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredPatients.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
-                    No participants found matching the selected filter criteria.
+                  <td colSpan={9} className="py-8 text-center text-slate-400">
+                    No participants match current filter criteria.
                   </td>
                 </tr>
               ) : (
                 filteredPatients.map((pt) => {
-                  const lastVisit = [...pt.visits].reverse().find((v) => v.status === "Completed") || pt.visits[0];
+                  const completedVisits = pt.visits.filter((v) => v.status === "Completed").length;
+                  const totalVisits = pt.visits.length;
+                  const isHighRisk = pt.profile.riskBand === "High";
 
                   return (
                     <tr
                       key={pt.id}
                       onClick={() => setSelectedPatientId(pt.id)}
-                      className="hover:bg-blue-50/30 transition-colors cursor-pointer group"
+                      className={`hover:bg-slate-50/80 cursor-pointer transition-colors ${
+                        isHighRisk ? "bg-rose-50/30" : ""
+                      }`}
                     >
-                      <td className="py-3 px-4 font-mono font-bold text-slate-900 group-hover:text-blue-700">
-                        {pt.id}
-                      </td>
-                      <td className="py-3 px-4 text-slate-700 font-medium">
-                        {pt.siteName}
-                        <span className="ml-1 text-[10px] text-slate-400 font-mono">({pt.siteId})</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                          {pt.status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-emerald-700">
-                            {pt.profile.compliancePercentage}%
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <RiskBadge band={pt.profile.riskBand} score={pt.profile.totalRiskScore} size="sm" />
-                      </td>
-                      <td className="py-3 px-4 text-slate-600">
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Visit {lastVisit.visitNumber} ({lastVisit.date || "Scheduled"})</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        {pt.profile.deviationCount > 0 ? (
-                          <span className="inline-flex items-center gap-1 font-mono font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">
-                            {pt.profile.deviationCount} event{pt.profile.deviationCount > 1 ? "s" : ""}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 font-mono">0</span>
+                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900 flex items-center gap-1.5">
+                        <span>{pt.id}</span>
+                        {pt.hasDataIssue && isDataManager && (
+                          <span className="w-2 h-2 rounded-full bg-teal-500" title="eCRF query pending resolution" />
                         )}
                       </td>
-                      <td className="py-3 px-4 text-right">
-                        <span className="font-semibold text-blue-700 group-hover:text-blue-900">
-                          Timeline →
+                      <td className="py-3.5 px-4">
+                        <div className="font-medium text-slate-800">{pt.siteName}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">{pt.siteId}</div>
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-600">
+                        {pt.age}y • {pt.gender}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-600 font-mono text-[11px]">
+                        {pt.enrollmentDate}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-slate-800">
+                            {completedVisits}/{totalVisits}
+                          </span>
+                          <div className="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                            <div
+                              className="bg-blue-600 h-full rounded-full"
+                              style={{ width: `${(completedVisits / totalVisits) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-mono font-bold text-slate-800">
+                          {pt.profile.compliancePercentage}%
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <RiskBadge band={pt.profile.riskBand} score={pt.profile.totalRiskScore} />
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {pt.profile.deviationCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-rose-700 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                            <AlertTriangle className="w-3 h-3" />
+                            <span>{pt.profile.deviationCount}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>0</span>
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <span className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-0.5">
+                          <span>{isDataManager && pt.hasDataIssue ? "Edit eCRF" : "View"}</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
                         </span>
                       </td>
                     </tr>
@@ -253,28 +331,33 @@ export function PatientsPage() {
           </table>
         </div>
 
-        {/* Table Footer */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-500">
-          <span>Showing {filteredPatients.length} of {patients.length} participants</span>
-          <span>Click any subject to open visit compliance timeline & clinical details</span>
+        <div className="p-4 border-t border-slate-200 bg-slate-50/60 flex items-center justify-between text-xs text-slate-500">
+          <span>Showing {filteredPatients.length} of {scopedPatients.length} scoped participants</span>
+          <span className="font-mono font-semibold">
+            {isInvestigator ? "Scoped to SITE-03" : "Multi-Site Registry"}
+          </span>
         </div>
       </div>
 
-      {/* Patient Detail Drawer */}
+      {/* Drawers */}
       <PatientDetailDrawer
-        patient={selectedPatient}
+        patient={selectedPatientObj}
         patientProfile={selectedProfile}
         deviations={deviations}
         onClose={() => setSelectedPatientId(null)}
-        onSelectDeviation={(dev) => {
-          setSelectedDeviation(dev);
+        onSelectDeviation={(d) => {
+          setSelectedPatientId(null);
+          setSelectedDeviation(d);
         }}
       />
 
-      {/* Linked Deviation Detail Drawer */}
       <DeviationDetailDrawer
         deviation={selectedDeviation}
         onClose={() => setSelectedDeviation(null)}
+        onSelectPatient={(id) => {
+          setSelectedDeviation(null);
+          setSelectedPatientId(id);
+        }}
       />
     </div>
   );

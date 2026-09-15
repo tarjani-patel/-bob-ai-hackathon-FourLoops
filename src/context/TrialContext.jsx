@@ -32,6 +32,40 @@ const BASELINE_NOTIFICATIONS = [
   }
 ];
 
+// Baseline audit logs compliant with 21 CFR Part 11 requirements
+const BASELINE_AUDIT_LOGS = [
+  {
+    id: "AUD-2026-001",
+    timestamp: "2026-01-05 08:00:12 UTC",
+    action: "PROTOCOL_FREEZE",
+    entityType: "PROTOCOL",
+    entityId: "CT-101",
+    details: "Protocol Cardio-X Phase III v3.2 ingested and locked under 21 CFR Part 11 electronic signature.",
+    performedBy: "Elena Rostova",
+    role: "SPONSOR"
+  },
+  {
+    id: "AUD-2026-002",
+    timestamp: "2026-01-08 09:14:40 UTC",
+    action: "SITE_ACTIVATION",
+    entityType: "SITE",
+    entityId: "SITE-03",
+    details: "Metro General Health Science Center activated with Investigator Dr. Evelyn Zhao, MD.",
+    performedBy: "Sarah Jenkins, CCRA",
+    role: "CRA"
+  },
+  {
+    id: "AUD-2026-003",
+    timestamp: "2026-01-15 11:22:05 UTC",
+    action: "COHORT_INGESTION",
+    entityType: "PATIENT_DATA",
+    entityId: "104 Patients",
+    details: "Automated sync of 104 patient eCRF and lab records across 5 investigation sites.",
+    performedBy: "Marcus Vance",
+    role: "DATA_MANAGER"
+  }
+];
+
 export function TrialProvider({ children }) {
   const [protocol] = useState(PROTOCOL_CONFIG);
   const [patients, setPatients] = useState(SYNTHETIC_PATIENTS);
@@ -47,13 +81,16 @@ export function TrialProvider({ children }) {
   // Custom CAPAs state so users can approve/update them interactively
   const [customCapas, setCustomCapas] = useState(null);
 
+  // Audit trail state
+  const [auditLogs, setAuditLogs] = useState(BASELINE_AUDIT_LOGS);
+
   // Compute deviations deterministically
   const fullDeviations = useMemo(() => {
     return evaluateCompliance(patients, protocol);
   }, [patients, protocol]);
 
   // If hasAnalyzed is false, provide preliminary baseline intake deviations (only 4 minor admin issues)
-  // When hasAnalyzed is true, provide all 32 detected deviations!
+  // When hasAnalyzed is true, provide all detected deviations!
   const deviations = useMemo(() => {
     if (!hasAnalyzed) {
       return fullDeviations.filter((d) => d.severity === "Administrative" || d.category === "Data Quality");
@@ -104,6 +141,23 @@ export function TrialProvider({ children }) {
     return notifications.filter((n) => !n.read).length;
   }, [notifications]);
 
+  // Audit logging function
+  const logAuditEvent = useCallback(({ action, entityType, entityId, details, performedBy, role }) => {
+    const newEntry = {
+      id: `AUD-${Date.now().toString().slice(-6)}`,
+      timestamp: new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC",
+      action,
+      entityType: entityType || "SYSTEM",
+      entityId: entityId || "GENERAL",
+      details,
+      performedBy: performedBy || "System Automator",
+      role: role || "SYSTEM"
+    };
+
+    setAuditLogs((prev) => [newEntry, ...prev]);
+    return newEntry;
+  }, []);
+
   // Action: Mark all notifications read
   const markAllNotificationsRead = useCallback(() => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
@@ -114,24 +168,57 @@ export function TrialProvider({ children }) {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   }, []);
 
-  // Action: Update CAPA status
-  const updateCapaStatus = useCallback((capaId, newStatus) => {
+  // Action: Update CAPA status with audit logging
+  const updateCapaStatus = useCallback((capaId, newStatus, user) => {
     setCustomCapas((prev) => {
       const current = prev || generatedCapas;
       return current.map((c) => (c.id === capaId ? { ...c, status: newStatus } : c));
     });
-  }, [generatedCapas]);
+
+    logAuditEvent({
+      action: newStatus === "Approved" ? "CAPA_APPROVED" : "CAPA_STATUS_CHANGED",
+      entityType: "CAPA",
+      entityId: capaId,
+      details: `CAPA ${capaId} status transitioned to '${newStatus}'.`,
+      performedBy: user?.name || "Elena Rostova",
+      role: user?.role || "SPONSOR"
+    });
+  }, [generatedCapas, logAuditEvent]);
+
+  // Action: Data Manager edits synthetic patient data (reconciles lab, doses, or vitals)
+  const editPatientData = useCallback((patientId, updater, logDetails, user) => {
+    setPatients((prevPatients) => {
+      return prevPatients.map((pt) => {
+        if (pt.id !== patientId) return pt;
+        if (typeof updater === "function") {
+          return updater(pt);
+        }
+        return { ...pt, ...updater };
+      });
+    });
+
+    logAuditEvent({
+      action: "PATIENT_DATA_CORRECTED",
+      entityType: "PATIENT",
+      entityId: patientId,
+      details: logDetails || `eCRF record corrected for subject ${patientId}.`,
+      performedBy: user?.name || "Marcus Vance",
+      role: user?.role || "DATA_MANAGER"
+    });
+  }, [logAuditEvent]);
 
   // Action: Reset to Baseline
   const resetToBaseline = useCallback(() => {
+    setPatients(SYNTHETIC_PATIENTS);
     setHasAnalyzed(false);
     setCustomCapas(null);
     setLastAnalysisResult(null);
     setNotifications(BASELINE_NOTIFICATIONS);
+    setAuditLogs(BASELINE_AUDIT_LOGS);
   }, []);
 
   // Action: Run Compliance Analysis
-  const runComplianceAnalysis = useCallback(() => {
+  const runComplianceAnalysis = useCallback((currentUser) => {
     setIsAnalyzing(true);
     setAnalysisProgress(15);
 
@@ -203,6 +290,16 @@ export function TrialProvider({ children }) {
       setHasAnalyzed(true);
       setAnalysisProgress(100);
       setIsAnalyzing(false);
+
+      // Audit log entry for analysis execution
+      logAuditEvent({
+        action: "COMPLIANCE_ANALYSIS_RUN",
+        entityType: "ENGINE",
+        entityId: protocol.trialId,
+        details: `Deterministic compliance verification executed: ${patients.length} subjects scanned, ${updatedDevs.length} deviations active.`,
+        performedBy: currentUser?.name || "Sarah Jenkins, CCRA",
+        role: currentUser?.role || "CRA"
+      });
     }, 1000);
 
     return () => {
@@ -211,7 +308,7 @@ export function TrialProvider({ children }) {
       clearTimeout(step3);
       clearTimeout(step4);
     };
-  }, [patients, protocol]);
+  }, [patients, protocol, logAuditEvent]);
 
   const value = {
     protocol,
@@ -236,7 +333,10 @@ export function TrialProvider({ children }) {
     analysisProgress,
     lastAnalysisResult,
     runComplianceAnalysis,
-    setPatients
+    setPatients,
+    auditLogs,
+    logAuditEvent,
+    editPatientData
   };
 
   return <TrialContext.Provider value={value}>{children}</TrialContext.Provider>;

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { 
   X, 
   User, 
@@ -9,16 +9,120 @@ import {
   XCircle, 
   Pill, 
   TestTube, 
-  Activity,
-  ChevronRight
+  Activity, 
+  ChevronRight, 
+  Database, 
+  Edit3, 
+  Check, 
+  Sparkles 
 } from "lucide-react";
 import { RiskBadge, SeverityBadge } from "./RiskBadge.jsx";
 import { PROTOCOL_CONFIG } from "../data/protocolConfig.js";
+import { useAuth } from "../auth/AuthContext.jsx";
+import { useTrial } from "../context/TrialContext.jsx";
+import { PERMISSIONS } from "../auth/permissions.js";
 
 export function PatientDetailDrawer({ patient, patientProfile, deviations = [], onClose, onSelectDeviation }) {
   if (!patient) return null;
 
+  const { can, user } = useAuth();
+  const { editPatientData, runComplianceAnalysis } = useTrial();
+  const [successMessage, setSuccessMessage] = useState("");
+
   const patientDeviations = deviations.filter((d) => d.patientId === patient.id);
+
+  const canEditData = can(PERMISSIONS.EDIT_PATIENT_DATA);
+
+  // Check specific data issues for Data Manager correction
+  const hasMissingCbc = !patient.labs.some((l) => l.labName.includes("CBC"));
+  const nonStandardMed = patient.medications.find((m) => m.drugName === "Cardio-X" && m.doseMg !== 100);
+  const hasMissingV2Vitals = patient.visits.some((v) => v.visitNumber === 2 && !v.vitals);
+  const hasMissingV1Ecg = patient.visits.some(
+    (v) => v.visitNumber === 1 && !v.proceduresCompleted?.includes("12-Lead Baseline ECG")
+  );
+
+  const hasAnyDataIssue = hasMissingCbc || Boolean(nonStandardMed) || hasMissingV2Vitals || hasMissingV1Ecg;
+
+  const handleFixCbc = () => {
+    editPatientData(
+      patient.id,
+      (pt) => ({
+        ...pt,
+        labs: [
+          ...pt.labs,
+          {
+            labName: "Complete Blood Count (CBC)",
+            date: "2026-01-20",
+            status: "Completed",
+            value: "Normal (WBC 6.2, Hgb 14.1, Plt 240)",
+            unit: "cells/mcL"
+          }
+        ]
+      }),
+      `Clinical Data Manager uploaded missing CBC panel for subject ${patient.id}.`,
+      user
+    );
+    setSuccessMessage("CBC lab record entered & audited. Run Compliance Analysis to clear deviation!");
+    setTimeout(() => setSuccessMessage(""), 5000);
+  };
+
+  const handleFixDose = () => {
+    editPatientData(
+      patient.id,
+      (pt) => ({
+        ...pt,
+        medications: pt.medications.map((m) =>
+          m.drugName === "Cardio-X" ? { ...m, doseMg: 100 } : m
+        )
+      }),
+      `Clinical Data Manager corrected investigational dose for ${patient.id} to protocol-mandated 100mg QD.`,
+      user
+    );
+    setSuccessMessage("Cardio-X dose updated to 100mg QD. Run Compliance Analysis to verify!");
+    setTimeout(() => setSuccessMessage(""), 5000);
+  };
+
+  const handleFixVitals = () => {
+    editPatientData(
+      patient.id,
+      (pt) => ({
+        ...pt,
+        visits: pt.visits.map((v) =>
+          v.visitNumber === 2
+            ? { ...v, vitals: { bpSystolic: 124, bpDiastolic: 80, heartRate: 72 } }
+            : v
+        )
+      }),
+      `Clinical Data Manager reconciled unentered Visit 2 vital signs for ${patient.id}.`,
+      user
+    );
+    setSuccessMessage("Visit 2 vital signs entered. eCRF query closed!");
+    setTimeout(() => setSuccessMessage(""), 5000);
+  };
+
+  const handleFixEcg = () => {
+    editPatientData(
+      patient.id,
+      (pt) => ({
+        ...pt,
+        visits: pt.visits.map((v) =>
+          v.visitNumber === 1
+            ? {
+                ...v,
+                proceduresCompleted: [
+                  ...(v.proceduresCompleted || []),
+                  "12-Lead Baseline ECG"
+                ]
+              }
+            : v
+        )
+      }),
+      `Clinical Data Manager reconciled missing Baseline ECG procedure record for ${patient.id}.`,
+      user
+    );
+    setSuccessMessage("Baseline ECG record reconciled in eCRF checklist!");
+    setTimeout(() => setSuccessMessage(""), 5000);
+  };
 
   // Helper to determine visit status badge
   const getVisitTimingBadge = (visit) => {
@@ -104,38 +208,127 @@ export function PatientDetailDrawer({ patient, patientProfile, deviations = [], 
           </button>
         </div>
 
-        {/* Content Body */}
+        {/* Success Toast */}
+        {successMessage && (
+          <div className="bg-emerald-50 border-b border-emerald-200 p-3 text-xs text-emerald-900 flex items-center justify-between animate-fade-in">
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span className="font-medium">{successMessage}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Key Metrics Grid */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-              <span className="text-[10px] uppercase font-bold text-slate-400">Risk Score</span>
-              <div className="mt-1 text-xl font-bold text-slate-900 font-mono">
-                {patientProfile?.totalRiskScore ?? 0}
+          
+          {/* DATA MANAGER ACTIONS (If permitted) */}
+          {canEditData && (
+            <div className="p-4 rounded-xl border border-teal-200 bg-teal-50/50">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-teal-700" />
+                  <span className="text-xs font-bold text-teal-950 uppercase tracking-wider">
+                    Data Manager eCRF Reconciliation
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 bg-teal-100 text-teal-800 rounded font-mono">
+                  21 CFR Part 11
+                </span>
               </div>
-              <span className="text-[10px] text-slate-500">
-                {patientProfile?.repeatedModifier > 0 ? "+5 repeat mod" : "Standard"}
-              </span>
+
+              {hasAnyDataIssue ? (
+                <div className="space-y-2 mt-3">
+                  {hasMissingCbc && (
+                    <div className="p-2.5 rounded-lg bg-white border border-teal-200 flex items-center justify-between text-xs">
+                      <div>
+                        <div className="font-bold text-slate-800">Missing CBC with Differential</div>
+                        <div className="text-[11px] text-slate-500">Hematology panel missing prior to Visit 3.</div>
+                      </div>
+                      <button
+                        onClick={handleFixCbc}
+                        className="px-2.5 py-1 bg-teal-700 hover:bg-teal-800 text-white rounded text-xs font-bold transition-colors"
+                      >
+                        Enter CBC (Normal)
+                      </button>
+                    </div>
+                  )}
+
+                  {nonStandardMed && (
+                    <div className="p-2.5 rounded-lg bg-white border border-teal-200 flex items-center justify-between text-xs">
+                      <div>
+                        <div className="font-bold text-slate-800">Dose Discrepancy: {nonStandardMed.doseMg}mg QD</div>
+                        <div className="text-[11px] text-slate-500">Protocol mandates 100mg QD Cardio-X.</div>
+                      </div>
+                      <button
+                        onClick={handleFixDose}
+                        className="px-2.5 py-1 bg-teal-700 hover:bg-teal-800 text-white rounded text-xs font-bold transition-colors"
+                      >
+                        Correct to 100mg
+                      </button>
+                    </div>
+                  )}
+
+                  {hasMissingV2Vitals && (
+                    <div className="p-2.5 rounded-lg bg-white border border-teal-200 flex items-center justify-between text-xs">
+                      <div>
+                        <div className="font-bold text-slate-800">Visit 2 Vital Signs Missing</div>
+                        <div className="text-[11px] text-slate-500">BP/HR fields unrecorded in eCRF.</div>
+                      </div>
+                      <button
+                        onClick={handleFixVitals}
+                        className="px-2.5 py-1 bg-teal-700 hover:bg-teal-800 text-white rounded text-xs font-bold transition-colors"
+                      >
+                        Record Vitals (124/80)
+                      </button>
+                    </div>
+                  )}
+
+                  {hasMissingV1Ecg && (
+                    <div className="p-2.5 rounded-lg bg-white border border-teal-200 flex items-center justify-between text-xs">
+                      <div>
+                        <div className="font-bold text-slate-800">Baseline ECG Record Missing</div>
+                        <div className="text-[11px] text-slate-500">Intake procedure checklist incomplete.</div>
+                      </div>
+                      <button
+                        onClick={handleFixEcg}
+                        className="px-2.5 py-1 bg-teal-700 hover:bg-teal-800 text-white rounded text-xs font-bold transition-colors"
+                      >
+                        Reconcile ECG
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-teal-800 mt-1">
+                  All eCRF records, laboratory panels, and dosage entries for this participant are complete and verified.
+                </p>
+              )}
             </div>
-            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-              <span className="text-[10px] uppercase font-bold text-slate-400">Compliance</span>
-              <div className="mt-1 text-xl font-bold text-emerald-700 font-mono">
-                {patientProfile?.compliancePercentage ?? 100}%
+          )}
+
+          {/* Compliance Profile Summary */}
+          <div className="grid grid-cols-3 gap-3 p-4 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+            <div>
+              <span className="text-[11px] font-semibold text-slate-400 uppercase">Compliance</span>
+              <div className="text-base font-bold text-slate-900 mt-0.5">
+                {patientProfile?.compliancePercentage || 100}%
               </div>
-              <span className="text-[10px] text-slate-500">Protocol adherence</span>
             </div>
-            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-              <span className="text-[10px] uppercase font-bold text-slate-400">Deviations</span>
-              <div className={`mt-1 text-xl font-bold font-mono ${patientDeviations.length > 0 ? "text-rose-600" : "text-slate-900"}`}>
-                {patientDeviations.length}
+            <div>
+              <span className="text-[11px] font-semibold text-slate-400 uppercase">Deviations</span>
+              <div className="text-base font-bold text-slate-900 mt-0.5">
+                {patientDeviations.length} Flagged
               </div>
-              <span className="text-[10px] text-slate-500">Documented events</span>
+            </div>
+            <div>
+              <span className="text-[11px] font-semibold text-slate-400 uppercase">Site</span>
+              <div className="text-xs font-bold text-slate-900 mt-0.5 font-mono">
+                {patient.siteId}
+              </div>
             </div>
           </div>
 
-          {/* ======================================================= */}
-          {/* VISIT TIMELINE (Visual: compliant, early, late, missed) */}
-          {/* ======================================================= */}
+          {/* Protocol Visit Timeline */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
@@ -253,7 +446,7 @@ export function PatientDetailDrawer({ patient, patientProfile, deviations = [], 
                     <span className="font-medium">{m.drugName}</span>
                     <span className="text-slate-500 font-mono text-[11px]">{m.doseMg}mg ({m.frequency})</span>
                     {m.isInvestigational && (
-                      <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded">IP</span>
+                      <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded font-bold">IP</span>
                     )}
                   </div>
                   {(m.drugName === "Drug-X" || m.drugName === "Ketoconazole") && (

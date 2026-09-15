@@ -11,9 +11,18 @@ import {
   Settings,
   ShieldAlert,
   Activity,
-  CheckCircle2
+  CheckCircle2,
+  Lock
 } from "lucide-react";
 import { useTrial } from "../context/TrialContext.jsx";
+import { useAuth } from "../auth/AuthContext.jsx";
+import { 
+  getVisiblePatients, 
+  getVisibleDeviations, 
+  getVisibleSites, 
+  getVisibleCapas 
+} from "../auth/dataScoping.js";
+import { RoleBadge } from "../auth/RoleBadge.jsx";
 
 const NAV_ITEMS = [
   { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
@@ -27,24 +36,37 @@ const NAV_ITEMS = [
 ];
 
 export function Sidebar() {
-  const { deviations, patients, siteRisks, capas, trialMetrics } = useTrial();
+  const { deviations, patients, siteRisks, capas } = useTrial();
+  const { user } = useAuth();
   const location = useLocation();
+
+  // Scope counts by active role
+  const scopedPatients = getVisiblePatients(user, patients);
+  const scopedDeviations = getVisibleDeviations(user, deviations);
+  const scopedSites = getVisibleSites(user, siteRisks);
+  const scopedCapas = getVisibleCapas(user, capas);
 
   const getBadgeValue = (key) => {
     switch (key) {
       case "patientsCount":
-        return patients.length;
+        return scopedPatients.length;
       case "deviationsCount":
-        return deviations.length;
+        return scopedDeviations.length;
       case "highRiskSites":
-        const highCount = siteRisks.filter((s) => s.riskBand === "High").length;
+        const highCount = scopedSites.filter((s) => s.riskBand === "High").length;
         return highCount > 0 ? `${highCount} High` : null;
       case "capaCount":
-        return capas.length;
+        return scopedCapas.length;
       default:
         return null;
     }
   };
+
+  // Filter navigation items by allowed routes for the current user role
+  const visibleNavItems = NAV_ITEMS.filter((item) => {
+    if (!user || !user.allowedRoutes) return true;
+    return user.allowedRoutes.includes(item.path);
+  });
 
   return (
     <aside className="w-64 bg-slate-900 text-slate-200 flex flex-col flex-shrink-0 min-h-screen border-r border-slate-800 selection:bg-clinical-600">
@@ -63,7 +85,7 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* Current Study Widget */}
+        {/* Current Study & Role Scope Widget */}
         <div className="mt-4 p-2.5 rounded-md bg-slate-800/60 border border-slate-700/50">
           <div className="flex items-center justify-between text-[11px] text-slate-400">
             <span>ACTIVE PROTOCOL</span>
@@ -75,19 +97,30 @@ export function Sidebar() {
           <div className="mt-1 font-semibold text-xs text-white truncate">
             CT-101 • Cardio-X Phase III
           </div>
-          <div className="mt-0.5 flex items-center justify-between text-[11px] text-slate-400">
-            <span>5 Sites Enrolled</span>
-            <span className="font-mono text-slate-300">v3.2</span>
+          
+          <div className="mt-2 pt-2 border-t border-slate-700/40 flex items-center justify-between">
+            <span className="text-[10px] text-slate-400">Scope:</span>
+            {user?.assignedSite ? (
+              <span className="text-[10px] font-mono font-bold text-purple-300 bg-purple-950/60 border border-purple-800/60 px-1.5 py-0.5 rounded">
+                {user.assignedSite} (Metro Gen)
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono font-bold text-blue-300 bg-blue-950/60 border border-blue-800/60 px-1.5 py-0.5 rounded">
+                Trial-Wide (5 Sites)
+              </span>
+            )}
           </div>
         </div>
       </div>
 
       {/* Navigation Links */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-          Trial Navigation
+        <div className="flex items-center justify-between px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <span>Navigation</span>
+          <span className="text-[10px] font-mono text-slate-500">{visibleNavItems.length} Sections</span>
         </div>
-        {NAV_ITEMS.map((item) => {
+        
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const badge = item.badgeKey ? getBadgeValue(item.badgeKey) : null;
 
@@ -124,7 +157,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Footer System Status */}
+      {/* Footer System Status & Role Tag */}
       <div className="p-4 border-t border-slate-800/80 bg-slate-950/40">
         <div className="flex items-center justify-between text-[11px] text-slate-400">
           <div className="flex items-center gap-1.5">
@@ -136,7 +169,7 @@ export function Sidebar() {
           </span>
         </div>
         <p className="mt-1.5 text-[10px] text-slate-400 leading-relaxed">
-          ICH GCP E6(R2) & 21 CFR 312 compliant continuous verification copilot.
+          ICH GCP E6(R2) & 21 CFR 312 continuous verification copilot.
         </p>
       </div>
     </aside>
