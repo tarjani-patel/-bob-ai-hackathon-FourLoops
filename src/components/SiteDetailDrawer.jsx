@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { 
   X, 
   Building2, 
@@ -10,14 +10,59 @@ import {
   Sparkles,
   CheckCircle2,
   Calendar,
-  ExternalLink
+  ExternalLink,
+  Loader2,
+  Info,
+  Compass
 } from "lucide-react";
 import { RiskBadge, SeverityBadge, TrendBadge } from "./RiskBadge.jsx";
+import { getSiteInsightWithAI } from "../api/trialApi.js";
 import { useNavigate } from "react-router-dom";
 
 export function SiteDetailDrawer({ site, onClose, onSelectDeviation }) {
   const navigate = useNavigate();
   if (!site) return null;
+
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiInsight, setAiInsight] = useState(null);
+  const [aiError, setAiError] = useState(null);
+
+  useEffect(() => {
+    setAiInsight(null);
+    setAiError(null);
+    setAiLoading(false);
+  }, [site?.siteCode || site?.id]);
+
+  const handleGenerateInsight = async () => {
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const res = await getSiteInsightWithAI({
+        siteId: site.siteCode || site.id,
+        siteName: site.siteName,
+        score: site.score,
+        riskBand: site.riskBand,
+        trend: site.trend,
+        predictedScore: site.predictedScore,
+        criticalCount: site.criticalCount,
+        majorCount: site.majorCount,
+        deviationCount: site.deviationCount,
+        topDrivers: site.riskDrivers || [],
+        recentDeviations: (site.deviations || []).slice(0, 5).map(d => ({
+          id: d.id,
+          category: d.category,
+          severity: d.severity,
+          actual: d.actual
+        }))
+      });
+      setAiInsight(res);
+    } catch (err) {
+      console.warn("AI site insight error:", err);
+      setAiError(err.message || "IBM Granite AI service is currently unavailable.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/30 backdrop-fade animate-in fade-in duration-150">
@@ -113,6 +158,107 @@ export function SiteDetailDrawer({ site, onClose, onSelectDeviation }) {
                 {site.disclaimer}
               </div>
             </div>
+          </div>
+
+          {/* ============================================================ */}
+          {/* IBM watsonx.ai Granite Site Pattern & Risk Insights          */}
+          {/* ============================================================ */}
+          <div className="rounded-xl border border-indigo-200 bg-gradient-to-b from-indigo-50/50 via-purple-50/20 to-white p-4 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <h3 className="text-xs font-bold text-indigo-950 uppercase tracking-wider">
+                  IBM Granite Site Risk Intelligence
+                </h3>
+              </div>
+              <span className="text-[10px] font-mono font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
+                ibm/granite-3-8b-instruct
+              </span>
+            </div>
+
+            {!aiInsight && !aiLoading && !aiError && (
+              <div className="p-3 bg-white rounded-lg border border-indigo-100 flex items-center justify-between gap-3 text-xs">
+                <p className="text-slate-600">
+                  Synthesize site deviation patterns, emerging operational risks, and monitoring focus areas with IBM Granite.
+                </p>
+                <button
+                  onClick={handleGenerateInsight}
+                  className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors shadow-sm"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Analyze Site with AI</span>
+                </button>
+              </div>
+            )}
+
+            {aiLoading && (
+              <div className="p-4 bg-white rounded-lg border border-indigo-100 flex items-center justify-center gap-3 text-xs text-indigo-800">
+                <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                <span className="font-medium">Evaluating site deviation patterns with IBM Granite...</span>
+              </div>
+            )}
+
+            {aiError && (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Info className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                  <span>AI service offline. Deterministic site risk score remains authoritative.</span>
+                </div>
+                <button
+                  onClick={handleGenerateInsight}
+                  className="text-xs font-semibold text-indigo-600 hover:underline flex-shrink-0"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {aiInsight && (
+              <div className="space-y-3 text-xs">
+                <div className="p-3 bg-white rounded-lg border border-indigo-100 space-y-2.5">
+                  <div>
+                    <div className="font-semibold text-indigo-950 mb-0.5">Site Risk Synthesis:</div>
+                    <p className="text-slate-700 leading-relaxed">{aiInsight.riskAssessment}</p>
+                  </div>
+
+                  {aiInsight.importantPatterns?.length > 0 && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="font-semibold text-slate-800 mb-1">Identified Systemic Patterns:</div>
+                      <ul className="list-disc list-inside space-y-1 text-slate-600">
+                        {aiInsight.importantPatterns.map((pattern, idx) => (
+                          <li key={idx}>{pattern}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {aiInsight.emergingRiskExplanation && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <span className="font-semibold text-slate-800">Emerging Risk Trajectory: </span>
+                      <span className="text-slate-600">{aiInsight.emergingRiskExplanation}</span>
+                    </div>
+                  )}
+
+                  {aiInsight.recommendedInvestigationAreas?.length > 0 && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="font-semibold text-slate-800 mb-1 flex items-center gap-1">
+                        <Compass className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Recommended CRA / Auditor Focus Areas:</span>
+                      </div>
+                      <ul className="list-disc list-inside space-y-0.5 text-slate-600">
+                        {aiInsight.recommendedInvestigationAreas.map((area, idx) => (
+                          <li key={idx}>{area}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-2 bg-indigo-50/50 rounded border border-indigo-100 text-[10px] text-indigo-900 leading-tight">
+                  <span className="font-semibold">Notice:</span> {aiInsight.humanReviewNotice}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Key Risk Drivers */}

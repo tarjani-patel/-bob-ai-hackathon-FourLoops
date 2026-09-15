@@ -144,7 +144,7 @@ export function SiteRiskPage() {
                   {site.siteName}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Principal Investigator: <span className="font-medium text-slate-700">{site.piName}</span>
+                  Principal Investigator: <span className="font-medium text-slate-700">{site.piName || site.pi}</span>
                 </p>
 
                 {/* Metrics */}
@@ -156,7 +156,7 @@ export function SiteRiskPage() {
                   <div>
                     <span className="text-[11px] text-slate-400">Active Deviations</span>
                     <div className="font-semibold text-rose-600 mt-0.5 font-mono">
-                      {site.deviationCount} ({site.criticalDeviations} Critical)
+                      {site.deviationCount} ({site.criticalDeviations ?? site.criticalCount ?? 0} Critical)
                     </div>
                   </div>
                 </div>
@@ -164,7 +164,7 @@ export function SiteRiskPage() {
                 {/* Drivers summary */}
                 <div className="mt-3 p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-[11px] text-slate-600">
                   <span className="font-semibold text-slate-800">Primary Risk Driver: </span>
-                  {site.topDrivers?.[0]?.driver || "Visit window adherence"}
+                  {site.topDrivers?.[0]?.driver || site.riskDrivers?.[0] || "Good protocol adherence"}
                 </div>
               </div>
 

@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 class InvestigationalProduct(BaseModel):
     name: str = "Cardio-X"
@@ -80,8 +80,17 @@ class SiteTrendPrediction(BaseModel):
     predictedBand: str = "Low"
     projectedChange: int = 0
     predictionRationale: str = ""
+    currentRisk: Optional[int] = None
+    predictedRisk: Optional[int] = None
+    predictionDirection: Optional[str] = "Stable"
+    explanation: Optional[str] = None
     history: List[SiteTrendHistoryPoint] = Field(default_factory=list)
     disclaimer: str = "Estimated trajectory based on 30-day deviation velocity & cluster density."
+
+class TopRiskDriverItem(BaseModel):
+    driver: str
+    severity: Optional[str] = "Major"
+    count: Optional[int] = 1
 
 class SiteRiskSummary(BaseModel):
     siteId: str
@@ -100,11 +109,79 @@ class SiteRiskSummary(BaseModel):
     majorCount: int
     minorCount: int
     adminCount: int
+    repeatedDeviationCount: int = 0
+    numberOfCategories: int = 0
+    categoryCount: int = 0
+    recentDeviationCount: int = 0
     riskDrivers: List[str] = Field(default_factory=list)
+    topDrivers: List[TopRiskDriverItem] = Field(default_factory=list)
+    topRiskDrivers: List[TopRiskDriverItem] = Field(default_factory=list)
     categoryBreakdown: Dict[str, int] = Field(default_factory=dict)
     deviations: Optional[List[Any]] = None
     patientProfiles: Optional[List[PatientProfile]] = None
     trend: Optional[SiteTrendPrediction] = None
+    # Compatibility aliases
+    riskLevel: Optional[str] = None
+    totalDeviations: Optional[int] = None
+    affectedPatients: Optional[int] = None
+    piName: Optional[str] = None
+    criticalDeviations: Optional[int] = None
+    trendDirection: Optional[str] = None
+    trendChangePercent: Optional[str] = None
+    projectedChange: Optional[int] = None
+    currentRisk: Optional[int] = None
+    predictedRisk: Optional[int] = None
+    predictedScore: Optional[int] = None
+    predictedBand: Optional[str] = None
+    predictionDirection: Optional[str] = None
+    predictionRationale: Optional[str] = None
+    disclaimer: Optional[str] = None
+
+    @model_validator(mode="after")
+    def populate_site_aliases(self):
+        if not self.riskLevel:
+            self.riskLevel = self.riskBand
+        if self.totalDeviations is None:
+            self.totalDeviations = self.deviationCount
+        if self.affectedPatients is None:
+            self.affectedPatients = self.affectedPatientCount
+        if not self.piName:
+            self.piName = self.pi
+        if self.criticalDeviations is None:
+            self.criticalDeviations = self.criticalCount
+        if self.currentRisk is None:
+            self.currentRisk = self.score
+        if not self.categoryCount:
+            self.categoryCount = self.numberOfCategories or len(self.categoryBreakdown)
+        if not self.numberOfCategories:
+            self.numberOfCategories = self.categoryCount
+
+        if self.trend:
+            if not self.trendDirection:
+                self.trendDirection = self.trend.trend
+            if self.projectedChange is None:
+                self.projectedChange = self.trend.projectedChange
+            if not self.trendChangePercent:
+                sign = "+" if self.trend.projectedChange > 0 else ""
+                self.trendChangePercent = f"{sign}{self.trend.projectedChange}" if self.trend.projectedChange != 0 else "0"
+            if self.predictedScore is None:
+                self.predictedScore = self.trend.predictedScore
+            if self.predictedRisk is None:
+                self.predictedRisk = self.trend.predictedScore
+            if not self.predictedBand:
+                self.predictedBand = self.trend.predictedBand
+            if not self.predictionDirection:
+                self.predictionDirection = self.trend.predictionDirection or ("Increasing" if self.trend.trend == "Worsening" else "Decreasing" if self.trend.trend == "Improving" else "Stable")
+            if not self.predictionRationale:
+                self.predictionRationale = self.trend.predictionRationale
+            if not self.disclaimer:
+                self.disclaimer = self.trend.disclaimer
+
+        if not self.topDrivers and self.riskDrivers:
+            self.topDrivers = [TopRiskDriverItem(driver=d) for d in self.riskDrivers]
+        if not self.topRiskDrivers and self.topDrivers:
+            self.topRiskDrivers = self.topDrivers
+        return self
 
 class TrialMetrics(BaseModel):
     trialId: str

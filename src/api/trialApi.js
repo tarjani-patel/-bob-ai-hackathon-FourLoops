@@ -97,6 +97,27 @@ export async function updateCAPA(capaId, updates) {
   });
 }
 
+export async function approveCAPA(capaId, comment) {
+  return apiClient(`/api/capas/${encodeURIComponent(capaId)}/approve`, {
+    method: "POST",
+    body: JSON.stringify({ comment }),
+  });
+}
+
+export async function rejectCAPA(capaId, reason, comment) {
+  return apiClient(`/api/capas/${encodeURIComponent(capaId)}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason, comment }),
+  });
+}
+
+export async function addCAPAComment(capaId, text) {
+  return apiClient(`/api/capas/${encodeURIComponent(capaId)}/comments`, {
+    method: "POST",
+    body: JSON.stringify({ text }),
+  });
+}
+
 // Reports & Audit
 export async function getReports() {
   return apiClient("/api/reports");
@@ -115,3 +136,33 @@ export async function runComplianceAnalysis(options = {}) {
     body: JSON.stringify(options),
   });
 }
+
+// IBM watsonx.ai Granite Foundation Model Integration
+export async function getAIHealth() {
+  return apiClient("/api/ai/health");
+}
+
+export async function explainDeviationWithAI(payload) {
+  // payload: { deviationId, patientId, siteId, siteName, category, type, severity, expected, actual, evidence }
+  return apiClient("/api/ai/explain-deviation", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getSiteInsightWithAI(payload) {
+  // payload: { siteId, siteName, score, riskBand, trend, predictedScore, criticalCount, majorCount, deviationCount, topDrivers, recentDeviations }
+  return apiClient("/api/ai/site-insight", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getCAPARecommendationWithAI(payload) {
+  // payload: { capaId, siteId, siteName, category, problemStatement, evidence, existingHypothesis, linkedDeviations }
+  return apiClient("/api/ai/capa-recommendation", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+

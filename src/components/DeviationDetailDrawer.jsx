@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { 
   X, 
   AlertTriangle, 
@@ -10,10 +10,14 @@ import {
   ShieldAlert, 
   CheckCircle,
   HelpCircle,
-  Stethoscope
+  Stethoscope,
+  Sparkles,
+  Loader2,
+  Info
 } from "lucide-react";
 import { SeverityBadge, RiskBadge } from "./RiskBadge.jsx";
 import { generateDeviationExplanation } from "../logic/explanationEngine.js";
+import { explainDeviationWithAI } from "../api/trialApi.js";
 import { useNavigate } from "react-router-dom";
 
 export function DeviationDetailDrawer({ deviation, onClose, onSelectPatient }) {
@@ -21,6 +25,41 @@ export function DeviationDetailDrawer({ deviation, onClose, onSelectPatient }) {
   if (!deviation) return null;
 
   const explanation = generateDeviationExplanation(deviation);
+
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiExplanation, setAiExplanation] = useState(null);
+  const [aiError, setAiError] = useState(null);
+
+  useEffect(() => {
+    setAiExplanation(null);
+    setAiError(null);
+    setAiLoading(false);
+  }, [deviation?.id]);
+
+  const handleExplainWithAI = async () => {
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const res = await explainDeviationWithAI({
+        deviationId: deviation.id,
+        patientId: deviation.patientId,
+        siteId: deviation.siteId,
+        siteName: deviation.siteName,
+        category: deviation.category,
+        type: deviation.type,
+        severity: deviation.severity,
+        expected: deviation.expected,
+        actual: deviation.actual,
+        evidence: deviation.evidence || deviation.explanation
+      });
+      setAiExplanation(res);
+    } catch (err) {
+      console.warn("AI deviation explanation failed:", err);
+      setAiError(err.message || "IBM Granite AI service is currently unavailable.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-slate-900/30 backdrop-fade animate-in fade-in duration-150">
@@ -146,6 +185,98 @@ export function DeviationDetailDrawer({ deviation, onClose, onSelectPatient }) {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* ============================================================ */}
+          {/* IBM watsonx.ai Granite Clinical Interpretation Copilot       */}
+          {/* ============================================================ */}
+          <div className="rounded-xl border border-indigo-200 bg-gradient-to-b from-indigo-50/50 via-purple-50/20 to-white p-4 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-950">
+                  IBM Granite Clinical Assistant
+                </span>
+              </div>
+              <span className="text-[10px] font-mono font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
+                ibm/granite-3-8b-instruct
+              </span>
+            </div>
+
+            {!aiExplanation && !aiLoading && !aiError && (
+              <div className="p-3 bg-white rounded-lg border border-indigo-100 flex items-center justify-between gap-3 text-xs">
+                <p className="text-slate-600">
+                  Generate deep clinical context, contributing factors, and regulatory nuances powered by IBM watsonx.ai.
+                </p>
+                <button
+                  onClick={handleExplainWithAI}
+                  className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors shadow-sm"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Explain with AI</span>
+                </button>
+              </div>
+            )}
+
+            {aiLoading && (
+              <div className="p-4 bg-white rounded-lg border border-indigo-100 flex items-center justify-center gap-3 text-xs text-indigo-800">
+                <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                <span className="font-medium">Synthesizing clinical trial context with IBM Granite...</span>
+              </div>
+            )}
+
+            {aiError && (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Info className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                  <span>AI service offline. Deterministic compliance verification remains authoritative.</span>
+                </div>
+                <button
+                  onClick={handleExplainWithAI}
+                  className="text-xs font-semibold text-indigo-600 hover:underline flex-shrink-0"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {aiExplanation && (
+              <div className="space-y-3 text-xs">
+                <div className="p-3 bg-white rounded-lg border border-indigo-100 space-y-2">
+                  <div className="font-semibold text-indigo-950">AI Clinical Interpretation:</div>
+                  <p className="text-slate-700 leading-relaxed">{aiExplanation.explanation}</p>
+
+                  {aiExplanation.likelyContributingFactors?.length > 0 && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="font-semibold text-slate-800 mb-1">Likely Contributing Factors:</div>
+                      <ul className="list-disc list-inside space-y-0.5 text-slate-600">
+                        {aiExplanation.likelyContributingFactors.map((factor, idx) => (
+                          <li key={idx}>{factor}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {aiExplanation.clinicalImpact && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <span className="font-semibold text-slate-800">Clinical & Safety Impact: </span>
+                      <span className="text-slate-600">{aiExplanation.clinicalImpact}</span>
+                    </div>
+                  )}
+
+                  {aiExplanation.limitations && (
+                    <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 italic">
+                      <span className="font-medium not-italic text-slate-700">Nuance / Limitation: </span>
+                      {aiExplanation.limitations}
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-2 bg-indigo-50/50 rounded border border-indigo-100 text-[10px] text-indigo-900 leading-tight">
+                  <span className="font-semibold">Notice:</span> {aiExplanation.humanReviewNotice}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Recommended Action */}

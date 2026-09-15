@@ -33,7 +33,7 @@ def get_sites_risk(request: Request) -> List[SiteRiskSummary]:
     patients = store.get_patients()
 
     site_risks = [
-        calculate_site_risk(s, patients, store.deviations, PROTOCOL_CONFIG, include_details=False)
+        calculate_site_risk(s, patients, store.deviations, PROTOCOL_CONFIG, include_details=True)
         for s in PROTOCOL_CONFIG.sites
     ]
     site_risks.sort(key=lambda s: s.score, reverse=True)

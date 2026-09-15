@@ -25,10 +25,36 @@ def normalize_role(raw_role: Optional[str]) -> str:
     clean = raw_role.strip().lower()
     return NORMALIZED_ROLES.get(clean, "CRA")
 
+def normalize_site_code(site_str: Optional[str]) -> str:
+    if not site_str:
+        return ""
+    clean = site_str.strip().upper()
+    digits = "".join([c for c in clean if c.isdigit()])
+    if digits:
+        return f"SITE-{int(digits):02d}"
+    return clean
+
 def get_current_user_context(request: Request) -> Dict[str, Any]:
-    raw_role = request.headers.get("X-Demo-Role") or request.headers.get("x-demo-role")
-    site_id = request.headers.get("X-Demo-Site") or request.headers.get("x-demo-site")
-    user_name = request.headers.get("X-Demo-User") or request.headers.get("x-demo-user")
+    raw_role = (
+        request.headers.get("X-Demo-Role")
+        or request.headers.get("x-demo-role")
+        or request.headers.get("X-User-Role")
+        or request.headers.get("x-user-role")
+    )
+    site_id = (
+        request.headers.get("X-Demo-Site")
+        or request.headers.get("x-demo-site")
+        or request.headers.get("X-User-Site")
+        or request.headers.get("x-user-site")
+        or request.headers.get("X-Site-Id")
+        or request.headers.get("x-site-id")
+    )
+    user_name = (
+        request.headers.get("X-Demo-User")
+        or request.headers.get("x-demo-user")
+        or request.headers.get("X-User-Name")
+        or request.headers.get("x-user-name")
+    )
 
     normalized_role = normalize_role(raw_role)
 
@@ -50,14 +76,15 @@ def check_site_access(user_ctx: Dict[str, Any], requested_site_id: str) -> None:
     """Enforces site isolation for Site Investigators."""
     if user_ctx["role"] == "SITE_INVESTIGATOR":
         assigned_site = user_ctx.get("site_id")
-        if assigned_site and requested_site_id and assigned_site.upper() != requested_site_id.upper():
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=(
-                    f"Access Denied: Site Investigator is strictly scoped to assigned facility {assigned_site}. "
-                    f"Cross-site access to {requested_site_id} is prohibited under 21 CFR 312 / GCP isolation."
+        if assigned_site and requested_site_id:
+            if normalize_site_code(assigned_site) != normalize_site_code(requested_site_id):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=(
+                        f"Access Denied: Site Investigator is strictly scoped to assigned facility {assigned_site}. "
+                        f"Cross-site access to {requested_site_id} is prohibited under 21 CFR 312 / GCP isolation."
+                    )
                 )
-            )
 
 def check_role_permission(user_ctx: Dict[str, Any], allowed_roles: List[str], action_desc: str) -> None:
     """Verifies if the current user context holds one of the required clinical roles."""

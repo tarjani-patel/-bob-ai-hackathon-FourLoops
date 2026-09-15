@@ -1,7 +1,17 @@
 """TrialGuard AI — FastAPI Application Entrypoint."""
+import os
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+# Load local environment configuration from src/backend/.env, falling back to root .env
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+backend_env = os.path.join(backend_dir, ".env")
+if os.path.exists(backend_env):
+    load_dotenv(backend_env)
+else:
+    load_dotenv()
 
 from .data.store import store
 from .data.protocol import PROTOCOL_CONFIG
@@ -17,6 +27,7 @@ from .api.routes_risk import router as risk_router
 from .api.routes_capa import router as capa_router
 from .api.routes_reports import router as reports_router
 from .api.routes_audit import router as audit_router
+from .api.routes_ai import router as ai_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -62,6 +73,7 @@ app.include_router(risk_router)
 app.include_router(capa_router)
 app.include_router(reports_router)
 app.include_router(audit_router)
+app.include_router(ai_router)
 
 if __name__ == "__main__":
     import uvicorn

@@ -37,8 +37,8 @@ def run_compliance_analysis(
         for s in PROTOCOL_CONFIG.sites
     ]
 
-    # 3. Generate CAPAs
-    new_capas = generate_capas_from_deviations(deviations, site_risks)
+    # 3. Generate CAPAs (preserving existing approved/active CAPAs)
+    new_capas = generate_capas_from_deviations(deviations, site_risks, existing_capas=store.capas)
     store.capas = new_capas
 
     # 4. Compute overall trial metrics

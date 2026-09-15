@@ -68,8 +68,11 @@ export function SeverityBadge({ severity, showWeight = false }) {
   );
 }
 
-export function TrendBadge({ trend, projectedChange }) {
-  if (trend === "Worsening") {
+export function TrendBadge({ trend, projectedChange, direction, percentage }) {
+  const trendValue = typeof trend === "object" ? trend?.trend : (trend || direction || "Stable");
+  const changeValue = typeof trend === "object" ? trend?.projectedChange : (projectedChange ?? percentage);
+
+  if (trendValue === "Worsening" || trendValue === "Increasing") {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -77,12 +80,12 @@ export function TrendBadge({ trend, projectedChange }) {
           <polyline points="17 6 23 6 23 12"></polyline>
         </svg>
         <span>Worsening</span>
-        {projectedChange ? <span className="text-[11px]">(+{projectedChange})</span> : null}
+        {changeValue ? <span className="text-[11px]">({changeValue > 0 ? `+${changeValue}` : changeValue})</span> : null}
       </span>
     );
   }
 
-  if (trend === "Improving") {
+  if (trendValue === "Improving" || trendValue === "Decreasing") {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -90,7 +93,7 @@ export function TrendBadge({ trend, projectedChange }) {
           <polyline points="17 18 23 18 23 12"></polyline>
         </svg>
         <span>Improving</span>
-        {projectedChange ? <span className="text-[11px]">({projectedChange})</span> : null}
+        {changeValue ? <span className="text-[11px]">({changeValue})</span> : null}
       </span>
     );
   }

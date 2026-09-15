@@ -35,6 +35,11 @@ export function CapaPage() {
     return getVisibleCapas(user, capas);
   }, [user, capas]);
 
+  const activeCapa = useMemo(() => {
+    if (!selectedCapa) return null;
+    return scopedCapas.find((c) => c.id === selectedCapa.id) || selectedCapa;
+  }, [selectedCapa, scopedCapas]);
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const siteParam = params.get("site");
@@ -208,7 +213,7 @@ export function CapaPage() {
 
       {/* Drawer */}
       <CapaDetailDrawer
-        capa={selectedCapa}
+        capa={activeCapa}
         onClose={() => setSelectedCapa(null)}
         onUpdateStatus={updateCapaStatus}
       />

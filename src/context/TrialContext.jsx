@@ -309,6 +309,149 @@ export function TrialProvider({ children }) {
     });
   }, [apiHealthy, capas, logAuditEvent]);
 
+  // Action: Approve CAPA via /api/capas/{id}/approve
+  const approveCapa = useCallback(async (capaId, comment, user) => {
+    setCustomCapas((prev) => {
+      const current = prev || capas;
+      return current.map((c) => (c.id === capaId ? { ...c, status: "Approved" } : c));
+    });
+
+    if (apiHealthy) {
+      try {
+        const { approveCAPA, getAuditLogs: fetchAudit } = await import("../api/index.js");
+        const updated = await approveCAPA(capaId, comment);
+        if (updated) {
+          setCustomCapas((prev) => {
+            const current = prev || capas;
+            return current.map((c) => (c.id === capaId ? updated : c));
+          });
+        }
+        const freshLogs = await fetchAudit();
+        if (Array.isArray(freshLogs) && freshLogs.length > 0) setAuditLogs(freshLogs);
+      } catch (err) {
+        console.error("[TrialGuard API] Failed to approve CAPA on backend:", err);
+      }
+    }
+
+    logAuditEvent({
+      action: "CAPA_APPROVED",
+      entityType: "CAPA",
+      entityId: capaId,
+      details: comment || "CAPA approved by Sponsor under 21 CFR 312.",
+      performedBy: user?.name || "Elena Rostova",
+      role: user?.role || "SPONSOR"
+    });
+  }, [apiHealthy, capas, logAuditEvent]);
+
+  // Action: Reject CAPA via /api/capas/{id}/reject
+  const rejectCapa = useCallback(async (capaId, reason, comment, user) => {
+    setCustomCapas((prev) => {
+      const current = prev || capas;
+      return current.map((c) => (c.id === capaId ? { ...c, status: "Rejected" } : c));
+    });
+
+    if (apiHealthy) {
+      try {
+        const { rejectCAPA, getAuditLogs: fetchAudit } = await import("../api/index.js");
+        const updated = await rejectCAPA(capaId, reason, comment);
+        if (updated) {
+          setCustomCapas((prev) => {
+            const current = prev || capas;
+            return current.map((c) => (c.id === capaId ? updated : c));
+          });
+        }
+        const freshLogs = await fetchAudit();
+        if (Array.isArray(freshLogs) && freshLogs.length > 0) setAuditLogs(freshLogs);
+      } catch (err) {
+        console.error("[TrialGuard API] Failed to reject CAPA on backend:", err);
+      }
+    }
+
+    logAuditEvent({
+      action: "CAPA_REJECTED",
+      entityType: "CAPA",
+      entityId: capaId,
+      details: `CAPA rejected: ${reason}`,
+      performedBy: user?.name || "Elena Rostova",
+      role: user?.role || "SPONSOR"
+    });
+  }, [apiHealthy, capas, logAuditEvent]);
+
+  // Action: Add Comment to CAPA via /api/capas/{id}/comments
+  const addCapaComment = useCallback(async (capaId, text, user) => {
+    if (apiHealthy) {
+      try {
+        const { addCAPAComment, getAuditLogs: fetchAudit } = await import("../api/index.js");
+        const updated = await addCAPAComment(capaId, text);
+        if (updated) {
+          setCustomCapas((prev) => {
+            const current = prev || capas;
+            return current.map((c) => (c.id === capaId ? updated : c));
+          });
+        }
+        const freshLogs = await fetchAudit();
+        if (Array.isArray(freshLogs) && freshLogs.length > 0) setAuditLogs(freshLogs);
+        return updated;
+      } catch (err) {
+        console.error("[TrialGuard API] Failed to add CAPA comment on backend:", err);
+      }
+    }
+
+    const newComment = {
+      author: user?.name || "Reviewer",
+      role: user?.role || "CRA",
+      date: new Date().toISOString().slice(0, 10),
+      text
+    };
+    setCustomCapas((prev) => {
+      const current = prev || capas;
+      return current.map((c) => (c.id === capaId ? { ...c, comments: [...(c.comments || []), newComment] } : c));
+    });
+
+    logAuditEvent({
+      action: "CAPA_COMMENT_ADDED",
+      entityType: "CAPA",
+      entityId: capaId,
+      details: text,
+      performedBy: user?.name || "Reviewer",
+      role: user?.role || "CRA"
+    });
+  }, [apiHealthy, capas, logAuditEvent]);
+
+  // Action: Edit CAPA operational fields
+  const editCapa = useCallback(async (capaId, updates, user) => {
+    setCustomCapas((prev) => {
+      const current = prev || capas;
+      return current.map((c) => (c.id === capaId ? { ...c, ...updates } : c));
+    });
+
+    if (apiHealthy) {
+      try {
+        const { updateCAPA, getAuditLogs: fetchAudit } = await import("../api/index.js");
+        const updated = await updateCAPA(capaId, updates);
+        if (updated) {
+          setCustomCapas((prev) => {
+            const current = prev || capas;
+            return current.map((c) => (c.id === capaId ? updated : c));
+          });
+        }
+        const freshLogs = await fetchAudit();
+        if (Array.isArray(freshLogs) && freshLogs.length > 0) setAuditLogs(freshLogs);
+      } catch (err) {
+        console.error("[TrialGuard API] Failed to edit CAPA on backend:", err);
+      }
+    }
+
+    logAuditEvent({
+      action: "CAPA_UPDATED",
+      entityType: "CAPA",
+      entityId: capaId,
+      details: `CAPA fields updated by ${user?.name || "User"}.`,
+      performedBy: user?.name || "Elena Rostova",
+      role: user?.role || "SPONSOR"
+    });
+  }, [apiHealthy, capas, logAuditEvent]);
+
   // Action: Data Manager edits synthetic patient data (reconciles lab, doses, or vitals)
   const editPatientData = useCallback(async (patientId, updater, logDetails, user) => {
     let updatedRecord = null;
@@ -556,6 +699,10 @@ export function TrialProvider({ children }) {
     markAllNotificationsRead,
     markNotificationRead,
     updateCapaStatus,
+    approveCapa,
+    rejectCapa,
+    addCapaComment,
+    editCapa,
     resetToBaseline,
     isAnalyzing,
     analysisProgress,

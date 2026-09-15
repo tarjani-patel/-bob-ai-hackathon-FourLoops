@@ -9,6 +9,7 @@ from ..services.rbac_service import get_current_user_context, check_site_access
 router = APIRouter(prefix="/api/audit", tags=["Audit Trail"])
 
 @router.get("", response_model=List[AuditEvent])
+@router.get("-logs", response_model=List[AuditEvent])
 def get_audit_trail(
     request: Request,
     site_id: Optional[str] = Query(None, description="Filter audit logs by site ID"),
