@@ -5,7 +5,7 @@ FastAPI deterministic compliance, risk scoring, CAPA generation, and role-based 
 ## Architecture Overview
 
 ```
-backend/
+src/backend/
 ├── app/
 │   ├── main.py                  # FastAPI application entrypoint, middleware & routers
 │   ├── models/                  # Pydantic v2 data models
@@ -44,17 +44,18 @@ backend/
 
 ### 1. Install Dependencies
 ```bash
-pip install -r requirements.txt
+pip install -r src/backend/requirements.txt
 ```
 
 ### 2. Run the Development Server
+From the project root:
 ```bash
-cd backend
-python -m uvicorn app.main:app --reload --port 8000
+python -m uvicorn src.backend.app.main:app --reload --port 8000
 ```
-Or from the project root:
+Or from `src/backend/`:
 ```bash
-python -m uvicorn backend.app.main:app --reload --port 8000
+cd src/backend
+python -m uvicorn app.main:app --reload --port 8000
 ```
 
 ### 3. Interactive API Documentation

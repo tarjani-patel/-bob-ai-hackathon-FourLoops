@@ -1,11 +1,21 @@
 """Comprehensive Verification Test Suite for TrialGuard AI Backend."""
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Add root repo directory and src directory to sys.path
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+for d in [root_dir, src_dir]:
+    if d not in sys.path:
+        sys.path.insert(0, d)
 
 from fastapi.testclient import TestClient
-from backend.app.main import app
-from backend.app.data.store import store
+
+try:
+    from src.backend.app.main import app
+    from src.backend.app.data.store import store
+except ImportError:
+    from backend.app.main import app
+    from backend.app.data.store import store
 
 client = TestClient(app)
 

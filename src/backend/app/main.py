@@ -65,4 +65,6 @@ app.include_router(audit_router)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.app.main:app", host="0.0.0.0", port=8000, reload=True)
+    import os
+    target = "src.backend.app.main:app" if os.path.exists("src/backend") else "app.main:app"
+    uvicorn.run(target, host="0.0.0.0", port=8000, reload=True)
