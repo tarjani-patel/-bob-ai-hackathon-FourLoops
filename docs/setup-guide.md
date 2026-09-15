@@ -6,14 +6,13 @@
 
 Before you begin, ensure you have the following installed:
 
-- [ ] [e.g., Python 3.11+]
-- [ ] [e.g., Node.js 18+]
-- [ ] [e.g., Docker Desktop]
-- [ ] [e.g., An IBM Cloud account with watsonx.ai access]
+- [x] Node.js 18+ (tested on Node v24.13.0)
+- [x] npm 9+ (tested on npm 11.6.2)
+- [x] Modern web browser (Chrome, Edge, Firefox, Safari)
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and fill in the values:
+Copy `.env.example` to `.env` (optional for local mock prototype; required when connecting external watsonx services):
 
 ```bash
 cp .env.example .env
@@ -21,59 +20,66 @@ cp .env.example .env
 
 | Variable | Description | Required |
 |---|---|---|
-| `WATSONX_API_KEY` | Your IBM watsonx.ai API key | Yes |
-| `WATSONX_PROJECT_ID` | Your watsonx.ai project ID | Yes |
-| `DATABASE_URL` | PostgreSQL connection string | Yes |
-| `SLACK_WEBHOOK_URL` | Slack webhook for alerts | No |
+| `VITE_APP_TITLE` | Application title display | No (Defaults to TrialGuard AI) |
+| `WATSONX_API_KEY` | IBM watsonx.ai API key (for live cloud LLM bridge) | No (Client-side mock active) |
+| `WATSONX_PROJECT_ID` | IBM watsonx.ai Project ID | No (Client-side mock active) |
 
 ## Installation
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/[your-org]/[your-repo].git
-cd [your-repo]
+git clone https://github.com/tarjani-patel/trialguard-ai.git
+cd trialguard-ai
 
-# 2. Install backend dependencies
-[your command — e.g.: pip install -r requirements.txt]
-
-# 3. Install frontend dependencies (if applicable)
-[your command — e.g.: cd frontend && npm install]
-
-# 4. Set up the database (if applicable)
-[your command — e.g.: python manage.py migrate]
+# 2. Install application dependencies
+npm install
 ```
 
 ## Running the Application
 
 ```bash
-# Start the backend
-[your command — e.g.: uvicorn app.main:app --reload]
-
-# Start the frontend (in a separate terminal, if applicable)
-[your command — e.g.: cd frontend && npm run dev]
+# Start the local Vite development server
+npm run dev
 ```
 
-The application will be available at: `http://localhost:[PORT]`
+The application will be available at: `http://localhost:5173`
 
-## Running Tests
+To build the production-ready bundle and preview it:
 
 ```bash
-[your test command — e.g.: pytest tests/ -v]
+# Compile optimized production build
+npm run build
+
+# Preview production build locally
+npm run preview
 ```
 
-## Quick Demo (Optional)
+## Running Verification Tests
 
-If you have a demo script or sample data to showcase the project quickly:
+To verify the deterministic compliance engine and risk scoring calculations independently via Node.js:
 
 ```bash
-[e.g.: python demo/seed_demo_data.py]
-[e.g.: open http://localhost:8000/demo]
+node -e "import('./src/data/syntheticPatients.js').then(p => import('./src/data/protocolConfig.js').then(proto => import('./src/logic/complianceEngine.js').then(c => import('./src/logic/riskEngine.js').then(r => { const devs = c.evaluateCompliance(p.SYNTHETIC_PATIENTS, proto.PROTOCOL_CONFIG); console.log('Total Deviations:', devs.length); const metrics = r.calculateTrialMetrics(proto.PROTOCOL_CONFIG.sites, p.SYNTHETIC_PATIENTS, devs, proto.PROTOCOL_CONFIG); console.log('Site Risks:'); metrics.siteRiskList.forEach(s => console.log(s.siteCode, s.siteName, 'Score:', s.score, 'Band:', s.riskBand)); }))));"
 ```
 
-## Troubleshooting
+Expected Output:
+```
+Total Deviations: 32
+Site Risks:
+SITE-03 Metro General Health Science Center Score: 73 Band: High
+SITE-05 Boston Cardiovascular & Research Hospital Score: 33 Band: Medium
+SITE-02 Johns Hopkins Clinical Trials Unit Score: 15 Band: Low
+SITE-01 Mayo Clinic Research Center Score: 5 Band: Low
+SITE-04 Stanford Cardiovascular Institute Score: 1 Band: Low
+```
 
-| Issue | Solution |
-|---|---|
-| [e.g., `ModuleNotFoundError`] | [e.g., Run `pip install -r requirements.txt` again] |
-| [e.g., Database connection refused] | [e.g., Ensure PostgreSQL is running: `docker compose up db`] |
-| [e.g., watsonx.ai 401 error] | [e.g., Check `WATSONX_API_KEY` in your `.env` file] |
+## Key Navigation Routes
+
+- `/` — Clinical Trial Executive Dashboard
+- `/protocol` — Protocol Rules & Assessment Specifications
+- `/patients` — Participant Cohort Adherence Table & Visit Timeline
+- `/deviations` — Protocol Deviations Register & Hero Element
+- `/sites` — Ranked Site Risk Leaderboard & Predictive Forecasts
+- `/capa` — Corrective and Preventive Actions with Human Review
+- `/reports` — Regulatory Reports & Audit Sign-Off
+- `/settings` — Protocol Tolerances & AI Integration Settings

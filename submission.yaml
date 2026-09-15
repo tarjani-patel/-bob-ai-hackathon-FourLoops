@@ -9,61 +9,54 @@
 # =============================================================================
 
 team:
-  name: ""                             # REQUIRED — e.g., "Orion Squad"
-  track: ""                            # REQUIRED — one of: AI | DevOps | Sustainability | Open
+  name: "TrialGuard Team"              # REQUIRED — e.g., "Orion Squad"
+  track: "AI"                          # REQUIRED — one of: AI | DevOps | Sustainability | Open
   lead:
-    name: ""                           # REQUIRED — e.g., "Alice Chen"
-    email: ""                          # REQUIRED — e.g., "alice.chen@ibm.com"
+    name: "Tarjani Patel"              # REQUIRED — e.g., "Alice Chen"
+    email: "tarjani.patel@ibm.com"     # REQUIRED — e.g., "alice.chen@ibm.com"
   members:
-    - name: ""                         # REQUIRED — Team member 1
-      email: ""
-    - name: ""                         # Add more members by copying the two lines above
-      email: ""
-    - name: ""
-      email: ""
+    - name: "Tarjani Patel"            # REQUIRED — Team member 1
+      email: "tarjani.patel@ibm.com"
+    - name: "Clinical AI Lead"
+      email: "clinical.ai@trialguard.org"
 
 submission:
-  title: ""                            # REQUIRED — Project display name, e.g., "SmartOps Dashboard"
+  title: "TrialGuard AI"               # REQUIRED — Project display name
 
-  problem_statement: >                 # REQUIRED — 1-3 sentences. What problem? Who has it?
-    Replace this text with a concise description of the real-world problem
-    your project addresses and who experiences it.
+  problem_statement: >                 # REQUIRED — 1-3 sentences
+    Clinical trials suffer from severe protocol compliance failures, where over 70% of trials experience protocol deviations that delay drug approvals, escalate monitoring costs by millions, and endanger participant safety. Clinical Research Associates (CRAs) currently struggle with retrospective, manual monitoring across disparate EDC and site logs, leaving deviations undiscovered until audit cycles.
 
-  solution_summary: >                  # REQUIRED — 1-3 sentences. What did you build?
-    Replace this text with a clear description of your solution
-    and how it addresses the problem above.
+  solution_summary: >                  # REQUIRED — 1-3 sentences
+    TrialGuard AI is an agentic clinical-trial compliance copilot that continuously validates patient activity against trial protocols using a deterministic compliance engine. It detects and explains protocol deviations (Protocol Requirement vs Actual Data), identifies high-risk sites, forecasts emerging risk trajectories, and autonomously generates Corrective and Preventive Actions (CAPA) with mandatory human review.
 
   key_features:                        # REQUIRED — List 3 to 5 specific features you implemented
-    - ""                               # e.g., "Real-time pipeline anomaly detection using watsonx.ai"
-    - ""
-    - ""
-    - ""                               # optional 4th
-    - ""                               # optional 5th
+    - "Deterministic Compliance Engine validating visit windows, dosing, prohibited concomitant medications, and mandatory safety labs without LLM hallucinations"
+    - "Normalized 0-100 Site Risk Scoring with recurrent violation modifiers (+5 repeat, +5 multi-category) that objectively identifies high-risk investigation centers"
+    - "Protocol Requirement vs. Actual Patient Data Hero Inspection Panel providing regulatory (ICH GCP E6/FDA 21 CFR) audit rationales"
+    - "Automated CAPA Generator linking deviation clusters to root causes, corrective/preventive workflows, and mandatory human review sign-offs"
+    - "Interactive 30-Day Predictive Risk Trajectory forecasting site compliance velocity based on recent violation density"
 
   tech_stack:
-    languages: []                      # REQUIRED — e.g., ["Python", "TypeScript"]
-    frameworks: []                     # e.g., ["FastAPI", "React"]
-    ibm_technologies: []               # e.g., ["watsonx.ai", "IBM Bob", "IBM Cloud Functions"]
-    databases: []                      # e.g., ["PostgreSQL", "Redis"]
-    other: []                          # e.g., ["Docker", "GitHub Actions", "Slack API"]
+    languages: ["JavaScript", "HTML", "CSS"]
+    frameworks: ["React 18", "Vite", "Tailwind CSS", "React Router v6"]
+    ibm_technologies: ["IBM Bob", "watsonx.ai (Architectural Ready)"]
+    databases: ["Local State Architecture (FastAPI/PostgreSQL Ready)"]
+    other: ["Recharts", "Lucide React"]
 
-  what_we_are_most_proud_of: >         # Optional but recommended — guides judges to your best work
-    Replace with what aspect of the submission you consider strongest
-    and want judges to pay special attention to.
+  what_we_are_most_proud_of: >         # Optional but recommended
+    Our deterministic-first compliance architecture: compliance facts are computed strictly by verifiable rules rather than untrusted LLM generation, ensuring 100% auditability for FDA 21 CFR Part 11 and ICH GCP E6(R2), while AI is reserved for clinical interpretation, root-cause reasoning, and CAPA generation.
 
-  known_limitations: >                 # Optional but recommended — be honest about gaps
-    Replace with any known limitations, incomplete features,
-    or shortcuts taken due to time constraints.
+  known_limitations: >                 # Optional but recommended
+    Currently running on client-side state with realistic synthetic patient cohorts (104 patients across 5 sites); ready for direct binding to FastAPI backend endpoints and IBM watsonx.ai foundation models via the pre-architected integration connectors in Settings.
 
 # =============================================================================
 # ARTIFACT LOCATIONS
-# These paths are relative to the repo root. Only change if you moved files.
 # =============================================================================
 artifacts:
   source_code: "src/"
   setup_guide: "docs/setup-guide.md"
   architecture_doc: "docs/architecture.md"
-  demo_video: "demo/demo-video-link.txt"   # URL to hosted video (YouTube, Loom, Box)
-  live_demo: "demo/live-demo-url.txt"      # URL to deployed demo (optional)
+  demo_video: "demo/demo-video-link.txt"
+  live_demo: "demo/live-demo-url.txt"
   screenshots: "demo/screenshots/"
   presentation: "presentation/"
