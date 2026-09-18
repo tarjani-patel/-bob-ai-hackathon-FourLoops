@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, Link } from "react-router-dom";
 import {
   LayoutDashboard,
   FileText,
@@ -12,7 +12,8 @@ import {
   ShieldAlert,
   Activity,
   CheckCircle2,
-  Lock
+  Lock,
+  Globe
 } from "lucide-react";
 import { useTrial } from "../context/TrialContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -69,43 +70,43 @@ export function Sidebar() {
   });
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-200 flex flex-col flex-shrink-0 min-h-screen border-r border-slate-800 selection:bg-clinical-600">
+    <aside className="w-64 bg-[#0c1b33] text-slate-200 flex flex-col flex-shrink-0 min-h-screen border-r border-[#162746] selection:bg-blue-600">
       {/* Brand Header */}
-      <div className="p-5 border-b border-slate-800/80">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-clinical-700 flex items-center justify-center text-white shadow-sm ring-1 ring-white/10">
-            <ShieldAlert className="w-5 h-5 text-white" />
+      <div className="p-5 border-b border-[#162746]">
+        <Link to="/landing" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-sky-500 flex items-center justify-center text-white shadow-glow group-hover:scale-105 transition-transform">
+            <ShieldCheck className="w-6 h-6 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold text-base tracking-tight text-white">TrialGuard</span>
-              <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-400/30">AI</span>
+              <span className="font-extrabold text-base tracking-tight text-white">TrialGuard</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-400/30">AI</span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">Compliance Copilot</p>
+            <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Compliance Copilot</p>
           </div>
-        </div>
+        </Link>
 
         {/* Current Study & Role Scope Widget */}
-        <div className="mt-4 p-2.5 rounded-md bg-slate-800/60 border border-slate-700/50">
-          <div className="flex items-center justify-between text-[11px] text-slate-400">
-            <span>ACTIVE PROTOCOL</span>
-            <span className="inline-flex items-center gap-1 text-emerald-400 font-medium">
+        <div className="mt-4 p-3 rounded-xl bg-[#13233f] border border-[#1e345b]">
+          <div className="flex items-center justify-between text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+            <span>Protocol Live</span>
+            <span className="inline-flex items-center gap-1 text-emerald-400 font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Live
+              Synchronized
             </span>
           </div>
-          <div className="mt-1 font-semibold text-xs text-white truncate">
+          <div className="mt-1 font-bold text-xs text-white truncate">
             CT-101 • Cardio-X Phase III
           </div>
           
-          <div className="mt-2 pt-2 border-t border-slate-700/40 flex items-center justify-between">
-            <span className="text-[10px] text-slate-400">Scope:</span>
+          <div className="mt-2 pt-2 border-t border-[#1e345b] flex items-center justify-between">
+            <span className="text-[10px] text-slate-400 font-medium">Scope:</span>
             {user?.assignedSite ? (
-              <span className="text-[10px] font-mono font-bold text-purple-300 bg-purple-950/60 border border-purple-800/60 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] font-mono font-bold text-purple-300 bg-purple-950/80 border border-purple-800/80 px-2 py-0.5 rounded-md">
                 {user.assignedSite} (Metro Gen)
               </span>
             ) : (
-              <span className="text-[10px] font-mono font-bold text-blue-300 bg-blue-950/60 border border-blue-800/60 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] font-mono font-bold text-sky-300 bg-sky-950/80 border border-sky-800/80 px-2 py-0.5 rounded-md">
                 Trial-Wide (5 Sites)
               </span>
             )}
@@ -114,8 +115,8 @@ export function Sidebar() {
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        <div className="flex items-center justify-between px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+      <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
+        <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
           <span>Navigation</span>
           <span className="text-[10px] font-mono text-slate-500">{visibleNavItems.length} Sections</span>
         </div>
@@ -130,10 +131,10 @@ export function Sidebar() {
               to={item.path}
               className={({ isActive }) => {
                 const isItemActive = isActive || (item.path === "/dashboard" && location.pathname === "/");
-                return `flex items-center justify-between px-3 py-2.5 rounded-md text-xs font-medium transition-colors ${
+                return `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                   isItemActive
-                    ? "bg-blue-600 text-white font-semibold shadow-sm"
-                    : "text-slate-300 hover:text-white hover:bg-slate-800/70"
+                    ? "bg-gradient-to-r from-blue-600 to-sky-600 text-white shadow-glow"
+                    : "text-slate-300 hover:text-white hover:bg-white/5"
                 }`;
               }}
             >
@@ -143,9 +144,9 @@ export function Sidebar() {
               </div>
               {badge && (
                 <span
-                  className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                     item.badgeAlert
-                      ? "bg-rose-500/20 text-rose-300 border border-rose-500/30 font-semibold"
+                      ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
                       : "bg-slate-800 text-slate-300"
                   }`}
                 >
@@ -155,21 +156,32 @@ export function Sidebar() {
             </NavLink>
           );
         })}
+
+        {/* Overview link in nav */}
+        <div className="pt-3 mt-3 border-t border-[#162746]">
+          <Link
+            to="/landing"
+            className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-sky-300 hover:bg-white/5 transition-all"
+          >
+            <Globe className="w-4 h-4 text-sky-400" />
+            <span>Platform Overview</span>
+          </Link>
+        </div>
       </nav>
 
       {/* Footer System Status & Role Tag */}
-      <div className="p-4 border-t border-slate-800/80 bg-slate-950/40">
+      <div className="p-4 border-t border-[#162746] bg-[#081324]">
         <div className="flex items-center justify-between text-[11px] text-slate-400">
           <div className="flex items-center gap-1.5">
-            <Activity className="w-3.5 h-3.5 text-blue-400" />
-            <span className="text-slate-300 font-medium">Compliance Engine</span>
+            <Activity className="w-3.5 h-3.5 text-sky-400" />
+            <span className="text-slate-300 font-bold text-xs">Deterministic Scan</span>
           </div>
-          <span className="text-emerald-400 font-mono text-[10px] bg-emerald-950/60 border border-emerald-800/40 px-1 rounded">
-            DETERMINISTIC
+          <span className="text-emerald-400 font-mono text-[10px] bg-emerald-950/80 border border-emerald-800/60 px-1.5 py-0.5 rounded font-bold">
+            0% HALLUCINATION
           </span>
         </div>
         <p className="mt-1.5 text-[10px] text-slate-400 leading-relaxed">
-          ICH GCP E6(R2) & 21 CFR 312 continuous verification copilot.
+          ICH GCP E6(R2) & FDA 21 CFR 312 verification active.
         </p>
       </div>
     </aside>

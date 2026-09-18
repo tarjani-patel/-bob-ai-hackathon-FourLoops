@@ -128,18 +128,18 @@ export function PatientsPage() {
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
       {/* Top Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="prohealth-card bg-white/95 backdrop-blur-xl rounded-3xl border border-blue-100 p-6 sm:p-8 shadow-glass flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <div className="flex items-center gap-2 mb-1.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {isInvestigator ? "Site 03 Participant Cohort" : "Participant Cohort Directory"}
             </h1>
-            <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+            <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full shadow-xs">
               {scopedPatients.length} Enrolled {isInvestigator ? "(Metro Gen)" : "(5 Sites)"}
             </span>
             <RoleBadge role={user?.role} assignedSite={user?.assignedSite} size="sm" />
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-slate-600 mt-1">
             {isInvestigator
               ? "Confidential patient safety and visit adherence records for Metro General Health Science Center."
               : "Real-time participant adherence records across trial sites. Click any row to inspect visit history."}
@@ -147,13 +147,13 @@ export function PatientsPage() {
         </div>
 
         {/* Data Manager filter toggle or Export */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {isDataManager && (
             <button
               onClick={() => setDataIssuesOnly(!dataIssuesOnly)}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+              className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold transition-all shadow-xs ${
                 dataIssuesOnly
-                  ? "bg-teal-700 text-white shadow-xs"
+                  ? "bg-teal-700 text-white shadow-glow"
                   : "bg-teal-50 border border-teal-300 text-teal-800 hover:bg-teal-100"
               }`}
             >
@@ -164,25 +164,25 @@ export function PatientsPage() {
 
           <button
             onClick={() => alert(`Participant Export: ${scopedPatients.length} records compiled for GCP monitoring.`)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-slate-700 hover:text-blue-600 text-xs font-bold shadow-xs transition-all"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-4 h-4 text-blue-600" />
             <span>Export Roster</span>
           </button>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-subtle flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      <div className="prohealth-card bg-white/95 backdrop-blur-xl rounded-2xl border border-blue-100 p-4 shadow-glass flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={isInvestigator ? "Search Site 03 participant (PT-1042)..." : "Search participant ID (PT-1042), site name..."}
-            className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-600 focus:bg-white"
+            className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50/80 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:bg-white transition-all"
           />
         </div>
 
@@ -230,7 +230,7 @@ export function PatientsPage() {
       </div>
 
       {/* Participant Roster Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-subtle overflow-hidden">
+      <div className="prohealth-card bg-white/95 backdrop-blur-xl rounded-3xl border border-blue-100 shadow-glass overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
@@ -318,10 +318,17 @@ export function PatientsPage() {
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-right">
-                        <span className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPatientId(pt.id);
+                          }}
+                          className="text-blue-600 hover:text-white hover:bg-blue-600 font-bold inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/80 shadow-xs transition-all cursor-pointer hover:scale-105"
+                        >
                           <span>{isDataManager && pt.hasDataIssue ? "Edit eCRF" : "View"}</span>
                           <ChevronRight className="w-3.5 h-3.5" />
-                        </span>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -340,25 +347,29 @@ export function PatientsPage() {
       </div>
 
       {/* Drawers */}
-      <PatientDetailDrawer
-        patient={selectedPatientObj}
-        patientProfile={selectedProfile}
-        deviations={deviations}
-        onClose={() => setSelectedPatientId(null)}
-        onSelectDeviation={(d) => {
-          setSelectedPatientId(null);
-          setSelectedDeviation(d);
-        }}
-      />
+      {selectedPatientId && selectedPatientObj && (
+        <PatientDetailDrawer
+          patient={selectedPatientObj}
+          patientProfile={selectedProfile}
+          deviations={deviations}
+          onClose={() => setSelectedPatientId(null)}
+          onSelectDeviation={(d) => {
+            setSelectedPatientId(null);
+            setSelectedDeviation(d);
+          }}
+        />
+      )}
 
-      <DeviationDetailDrawer
-        deviation={selectedDeviation}
-        onClose={() => setSelectedDeviation(null)}
-        onSelectPatient={(id) => {
-          setSelectedDeviation(null);
-          setSelectedPatientId(id);
-        }}
-      />
+      {selectedDeviation && (
+        <DeviationDetailDrawer
+          deviation={selectedDeviation}
+          onClose={() => setSelectedDeviation(null)}
+          onSelectPatient={(id) => {
+            setSelectedDeviation(null);
+            setSelectedPatientId(id);
+          }}
+        />
+      )}
     </div>
   );
 }

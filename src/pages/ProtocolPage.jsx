@@ -22,25 +22,25 @@ export function ProtocolPage() {
   const [activeTab, setActiveTab] = useState("rules");
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 animate-fade-in">
       {/* Page Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-subtle flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="prohealth-card bg-white/95 backdrop-blur-xl rounded-3xl border border-blue-100 p-6 sm:p-8 shadow-glass flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold text-blue-800 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full shadow-xs">
               {protocol.trialId}
             </span>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
               Protocol Version: {protocol.protocolVersion}
             </span>
-            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
               IRB Approved: {protocol.irbApprovalNumber}
             </span>
           </div>
-          <h1 className="mt-2 text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             {protocol.trialName}
           </h1>
-          <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
             {protocol.indication} • Sponsor: {protocol.sponsor} • Last amended: {protocol.lastAmendmentDate}
           </p>
         </div>
@@ -48,31 +48,31 @@ export function ProtocolPage() {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => alert("Protocol v3.2 Master Specification downloaded in PDF format.")}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-slate-700 hover:text-blue-600 text-xs font-bold shadow-xs transition-all"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-4 h-4 text-blue-600" />
             <span>Export Protocol PDF</span>
           </button>
         </div>
       </div>
 
       {/* Trial Metadata Overview Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white rounded-xl border border-slate-200 p-4 shadow-subtle text-xs">
+      <div className="prohealth-card grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white/95 backdrop-blur-xl rounded-2xl border border-blue-100 p-5 shadow-glass text-xs">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Phase</span>
-          <div className="mt-0.5 font-bold text-slate-900 text-sm">{protocol.phase}</div>
+          <div className="mt-1 font-extrabold text-slate-900 text-base">{protocol.phase}</div>
         </div>
         <div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Investigation Sites</span>
-          <div className="mt-0.5 font-bold text-slate-900 text-sm">{protocol.sites.length} Sites</div>
+          <div className="mt-1 font-extrabold text-slate-900 text-base">{protocol.sites.length} Sites</div>
         </div>
         <div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Target Cohort</span>
-          <div className="mt-0.5 font-bold text-slate-900 text-sm">{protocol.targetEnrollment} Subjects</div>
+          <div className="mt-1 font-extrabold text-slate-900 text-base">{protocol.targetEnrollment} Subjects</div>
         </div>
         <div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Trial Compliance Rate</span>
-          <div className="mt-0.5 font-bold text-emerald-700 text-sm font-mono">{trialMetrics.compliancePercentage}%</div>
+          <div className="mt-1 font-extrabold text-emerald-600 text-base font-mono">{trialMetrics.compliancePercentage}%</div>
         </div>
       </div>
 

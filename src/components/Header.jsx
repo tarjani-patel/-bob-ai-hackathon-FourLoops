@@ -13,7 +13,8 @@ import {
   LogOut, 
   UserPlus, 
   ExternalLink,
-  ShieldAlert
+  ShieldAlert,
+  Globe
 } from "lucide-react";
 import { useTrial } from "../context/TrialContext.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -107,18 +108,18 @@ export function Header() {
     : "TG";
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-30 shadow-subtle">
+    <header className="h-16 backdrop-blur-md bg-white/90 border-b border-blue-100/90 px-6 flex items-center justify-between sticky top-0 z-30 shadow-subtle transition-all">
       {/* Left: Trial Selector & Verification Status */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-lg">
-          <FlaskConical className="w-4 h-4 text-blue-700" />
+        <div className="flex items-center gap-2 bg-blue-50/70 border border-blue-100/90 px-3 py-1.5 rounded-xl shadow-xs">
+          <FlaskConical className="w-4 h-4 text-blue-600" />
           <div className="flex flex-col">
-            <span className="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">Active Trial</span>
+            <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">Active Trial</span>
             <div 
               onClick={() => navigate("/trial-protocol")}
               className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
             >
-              <span className="text-xs font-bold text-slate-800 tracking-tight">
+              <span className="text-xs font-extrabold text-slate-800 tracking-tight">
                 {protocol.trialId}: {protocol.trialName}
               </span>
               <ChevronDown className="w-3 h-3 text-slate-400" />
@@ -136,7 +137,7 @@ export function Header() {
               ? "FastAPI Backend Offline. Operating in local preview mode. Click to retry connection."
               : "Checking FastAPI connection..."
           }
-          className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border cursor-pointer select-none transition-all ${
+          className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold border cursor-pointer select-none transition-all shadow-xs ${
             apiHealthy === true
               ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/70"
               : apiHealthy === false
@@ -161,28 +162,38 @@ export function Header() {
       {/* Middle: Global Search */}
       <div className="flex-1 max-w-md mx-6 hidden md:block">
         <form onSubmit={handleSearchSubmit} className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search patient (PT-1042), site (SITE-03), deviation (DEV-2026-001)..."
-            className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-600 focus:border-blue-600 focus:bg-white transition-all"
+            className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50/80 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:bg-white transition-all"
           />
         </form>
       </div>
 
       {/* Right: Role-Aware Actions & User Menu */}
       <div className="flex items-center gap-3">
+        {/* Landing Page Link Shortcut */}
+        <Link
+          to="/landing"
+          title="View Platform Overview & Line-art Architecture"
+          className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-blue-50/60 border border-transparent hover:border-blue-100 transition-all"
+        >
+          <Globe className="w-3.5 h-3.5 text-blue-500" />
+          <span>Overview</span>
+        </Link>
+
         {/* Run Compliance Analysis Button or Investigator Locked State */}
         {canRunAnalysis ? (
           <button
             onClick={() => runComplianceAnalysis(user)}
             disabled={isAnalyzing}
-            className={`relative inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition-all ${
+            className={`relative inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-glow transition-all ${
               isAnalyzing
                 ? "bg-blue-800 text-white cursor-wait"
-                : "bg-blue-700 hover:bg-blue-800 text-white hover:shadow"
+                : "bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 hover:shadow-float active:scale-95"
             }`}
             title="Executes deterministic rule verification across enrolled trial subjects"
           >
@@ -200,7 +211,7 @@ export function Header() {
           </button>
         ) : (
           <div 
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-slate-100/80 text-slate-500 border border-slate-200 cursor-not-allowed"
             title="Trial-wide compliance verification can only be initiated by CRA, Data Manager, or Sponsor roles."
           >
             <Lock className="w-3.5 h-3.5 text-slate-400" />
@@ -211,7 +222,7 @@ export function Header() {
         {/* Notification Bell */}
         <button
           onClick={() => setIsNotificationModalOpen(true)}
-          className="relative p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200/80 transition-colors"
+          className="relative p-2 rounded-xl text-slate-600 hover:text-blue-700 hover:bg-blue-50/60 border border-slate-200/80 transition-all"
           title="Open Compliance & Safety Alerts"
         >
           <Bell className="w-4 h-4" />
@@ -228,11 +239,11 @@ export function Header() {
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
             className="flex items-center gap-2.5 pl-2 border-l border-slate-200 hover:opacity-90 focus:outline-none"
           >
-            <div className="w-8 h-8 rounded-full bg-blue-700 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-sky-500 text-white flex items-center justify-center font-bold text-xs shadow-xs">
               {userInitials}
             </div>
             <div className="hidden xl:block text-left">
-              <div className="text-xs font-bold text-slate-800 leading-tight">
+              <div className="text-xs font-extrabold text-slate-800 leading-tight">
                 {user?.name || "Clinical User"}
               </div>
               <div className="text-[10px] text-slate-400 font-medium">
@@ -244,7 +255,7 @@ export function Header() {
 
           {/* User Dropdown Menu */}
           {isUserMenuOpen && (
-            <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 animate-fade-in">
+            <div className="absolute right-0 mt-2 w-72 bg-white/95 backdrop-blur-xl rounded-2xl shadow-float border border-blue-100 py-2 z-50 animate-fade-in">
               {/* Active Profile Info */}
               <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
                 <div className="flex items-center justify-between mb-1.5">
@@ -268,9 +279,17 @@ export function Header() {
               {/* Account Actions */}
               <div className="p-1 border-b border-slate-100">
                 <Link
+                  to="/landing"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-blue-50/60 rounded-xl transition-colors font-medium"
+                >
+                  <Globe className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Platform Overview</span>
+                </Link>
+                <Link
                   to="/register"
                   onClick={() => setIsUserMenuOpen(false)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded-lg transition-colors font-medium"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded-xl transition-colors font-medium"
                 >
                   <UserPlus className="w-3.5 h-3.5 text-slate-400" />
                   <span>Register Another Account</span>
@@ -281,7 +300,7 @@ export function Header() {
               <div className="p-1">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 rounded-lg transition-colors font-semibold"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 rounded-xl transition-colors font-semibold"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   <span>Sign Out</span>

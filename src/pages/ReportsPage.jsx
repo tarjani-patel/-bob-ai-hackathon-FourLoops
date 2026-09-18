@@ -70,31 +70,31 @@ export function ReportsPage() {
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
       {/* Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="prohealth-card bg-white/95 backdrop-blur-xl rounded-3xl border border-blue-100 p-6 sm:p-8 shadow-glass flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Clinical Compliance Reports</h1>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+          <div className="flex items-center gap-2 mb-1.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Clinical Compliance Reports</h1>
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 shadow-xs">
               Audit-Ready Documentation
             </span>
             <RoleBadge role={user?.role} assignedSite={user?.assignedSite} size="sm" />
           </div>
-          <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
             Automated regulatory reporting generated directly from deterministic trial compliance facts and risk calculations. Suitable for IRB submissions, sponsor audits, and FDA inspections.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={() => window.print()}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-xs transition-all"
           >
-            <Printer className="w-4 h-4" />
+            <Printer className="w-4 h-4 text-slate-500" />
             <span>Print</span>
           </button>
           <button
             onClick={() => alert(`Report "${activeReport.name}" exported as PDF with digital signature.`)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold shadow-sm"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white text-xs font-bold shadow-glow transition-all hover:scale-105"
           >
             <Download className="w-4 h-4" />
             <span>Export Report PDF</span>
@@ -117,10 +117,10 @@ export function ReportsPage() {
                 <div
                   key={report.id}
                   onClick={() => setSelectedReportId(report.id)}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer ${
+                  className={`prohealth-card p-4 rounded-2xl border transition-all cursor-pointer ${
                     isSelected
-                      ? "bg-white border-blue-500 shadow-md ring-2 ring-blue-100"
-                      : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-subtle"
+                      ? "bg-blue-50/90 border-blue-500 shadow-float ring-2 ring-blue-500/20"
+                      : "bg-white/90 border-slate-200 hover:border-blue-300 hover:shadow-float"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -157,7 +157,7 @@ export function ReportsPage() {
         </div>
 
         {/* Live Report Preview Area (8 cols) */}
-        <div className="lg:col-span-8 bg-white rounded-xl border border-slate-200 p-8 shadow-subtle space-y-6">
+        <div className="lg:col-span-8 prohealth-card bg-white/95 backdrop-blur-xl rounded-3xl border border-blue-100 p-8 shadow-glass space-y-6">
           {/* Report Document Header */}
           <div className="border-b-2 border-slate-900 pb-5">
             <div className="flex items-center justify-between">

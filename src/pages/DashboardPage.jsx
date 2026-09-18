@@ -20,7 +20,8 @@ import {
   ShieldCheck, 
   AlertOctagon, 
   FileText,
-  UserCheck
+  UserCheck,
+  HeartPulse
 } from "lucide-react";
 import { 
   ResponsiveContainer, 
@@ -177,20 +178,23 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
-      {/* Top Banner: Trial Context, Active Persona & Primary Action */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-subtle flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+      {/* Top Banner: ProHealth Glassmorphic Card */}
+      <div className="prohealth-card bg-white/95 backdrop-blur-xl rounded-3xl border border-blue-100 p-6 sm:p-8 shadow-glass flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+        {/* Ambient radial glow background */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-400/10 via-sky-300/10 to-transparent rounded-full blur-3xl -z-10" />
+
+        <div className="max-w-2xl">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50/80 border border-blue-200 px-2.5 py-0.5 rounded-full shadow-xs">
               {trialMetrics.trialId}
             </span>
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               {trialMetrics.phase} • Cardiovascular Disease
             </span>
             <RoleBadge role={user?.role} assignedSite={user?.assignedSite} size="sm" />
           </div>
 
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug">
             {isInvestigator 
               ? "My Site Overview" 
               : isDataManager
@@ -200,10 +204,10 @@ export function DashboardPage() {
               : "Trial Monitoring Overview"}
           </h1>
 
-          <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed">
             {isInvestigator ? (
               <>
-                Principal Investigator {user?.name || "Dr. Evelyn Zhao, MD"}. Scoped strictly to <span className="font-semibold text-purple-700">{user?.assignedSite ? `${user.assignedSite}` : "Metro General (SITE-03)"}</span> under 21 CFR 312 GCP Investigator isolation guidelines. Monitoring {scopedPatients.length} enrolled subjects.
+                Principal Investigator {user?.name || "Dr. Evelyn Zhao, MD"}. Scoped strictly to <span className="font-bold text-purple-700">{user?.assignedSite ? `${user.assignedSite}` : "Metro General (SITE-03)"}</span> under 21 CFR 312 GCP Investigator isolation guidelines. Monitoring {scopedPatients.length} enrolled subjects.
               </>
             ) : isDataManager ? (
               <>
@@ -227,16 +231,16 @@ export function DashboardPage() {
             <button
               onClick={() => runComplianceAnalysis(user)}
               disabled={isAnalyzing}
-              className={`px-5 py-3 rounded-lg text-sm font-bold text-white shadow-sm flex items-center justify-center gap-2 transition-all ${
+              className={`px-6 py-3.5 rounded-full text-xs font-extrabold text-white shadow-glow flex items-center justify-center gap-2 transition-all ${
                 isAnalyzing 
                   ? "bg-blue-800 cursor-wait" 
-                  : "bg-blue-700 hover:bg-blue-800 hover:shadow"
+                  : "bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 hover:shadow-float active:scale-95"
               }`}
             >
               {isAnalyzing ? (
                 <>
                   <RotateCw className="w-4 h-4 animate-spin" />
-                  <span>Running Deterministic Scan ({analysisProgress}%)...</span>
+                  <span>Scanning Cohort ({analysisProgress}%)...</span>
                 </>
               ) : (
                 <>
@@ -246,7 +250,7 @@ export function DashboardPage() {
               )}
             </button>
           ) : (
-            <div className="px-4 py-2.5 rounded-lg bg-slate-100 border border-slate-200 text-xs font-medium text-slate-600 flex items-center gap-2">
+            <div className="px-4 py-3 rounded-2xl bg-slate-100/80 border border-slate-200 text-xs font-semibold text-slate-600 flex items-center gap-2">
               <Lock className="w-4 h-4 text-slate-400" />
               <span>Central Analysis Managed by CRA / Sponsor</span>
             </div>
@@ -256,35 +260,35 @@ export function DashboardPage() {
 
       {/* Analysis Progress / Ingestion Banner */}
       {isAnalyzing && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 animate-pulse">
-          <div className="flex items-center justify-between text-xs font-semibold text-blue-900">
-            <span className="flex items-center gap-2">
-              <RotateCw className="w-3.5 h-3.5 animate-spin text-blue-700" />
+        <div className="bg-blue-50/90 border border-blue-200 rounded-2xl p-5 shadow-xs animate-pulse">
+          <div className="flex items-center justify-between text-xs font-bold text-blue-950">
+            <span className="flex items-center gap-2.5">
+              <RotateCw className="w-4 h-4 animate-spin text-blue-600" />
               Evaluating visit windows, medication logs, and safety lab bounds across subject records...
             </span>
-            <span>{analysisProgress}%</span>
+            <span className="font-mono">{analysisProgress}%</span>
           </div>
-          <div className="w-full bg-blue-200 h-1.5 rounded-full mt-2 overflow-hidden">
+          <div className="w-full bg-blue-200/80 h-2 rounded-full mt-3 overflow-hidden">
             <div 
-              className="bg-blue-700 h-full rounded-full transition-all duration-300"
+              className="bg-gradient-to-r from-blue-600 to-sky-500 h-full rounded-full transition-all duration-300"
               style={{ width: `${analysisProgress}%` }}
-            ></div>
+            />
           </div>
         </div>
       )}
 
       {/* Pre-Analysis Ingestion Alert Banner */}
       {!hasAnalyzed && !isAnalyzing && (
-        <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700 flex-shrink-0 mt-0.5">
+        <div className="prohealth-card bg-blue-50/80 border border-blue-200/80 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm mt-0.5">
               <Activity className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-xs font-bold text-blue-950 uppercase tracking-wider">
                 {isInvestigator ? "Site 03 Intake Ingested — Ready for Verification" : "Trial Ingestion Synchronized — Ready for Deterministic Analysis"}
               </h3>
-              <p className="text-xs text-blue-800 mt-1 leading-relaxed">
+              <p className="text-xs text-blue-900 mt-1 leading-relaxed">
                 {isInvestigator
                   ? "22 participant eCRF records for Metro General synchronized. Scan evaluates visit intervals and medication compliance."
                   : "104 participant eCRF records across 5 clinical sites ingested. Run the compliance analysis to evaluate protocol visit windows, dosing, prohibited conmeds, and safety laboratory bounds."}
@@ -294,7 +298,7 @@ export function DashboardPage() {
           {can("RUN_COMPLIANCE_ANALYSIS") && (
             <button
               onClick={() => runComplianceAnalysis(user)}
-              className="px-4 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs shadow-sm flex items-center gap-2 whitespace-nowrap transition-colors"
+              className="px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-glow flex items-center gap-2 whitespace-nowrap transition-all"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span>Run Compliance Analysis Now</span>
@@ -305,33 +309,33 @@ export function DashboardPage() {
 
       {/* Analysis Result Banner */}
       {lastAnalysisResult && !isAnalyzing && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 flex-shrink-0">
-              <CheckCircle2 className="w-5 h-5" />
+        <div className="prohealth-card bg-emerald-50/90 border border-emerald-200 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <div className="text-xs font-bold text-emerald-900">
+              <div className="text-xs font-extrabold text-emerald-950">
                 Compliance Verification Completed at {lastAnalysisResult.timestamp}
               </div>
-              <p className="text-xs text-emerald-800 mt-0.5">
+              <p className="text-xs text-emerald-900 mt-0.5 leading-relaxed">
                 {isInvestigator
                   ? `Deterministic engine evaluated ${scopedPatients.length} patients at Site 03. ${scopedDeviations.length} deviations active.`
                   : `Evaluated ${lastAnalysisResult.patientsEvaluated} patients across 5 sites. Detected ${lastAnalysisResult.deviationsDetected} deviations (${lastAnalysisResult.criticalCount} Critical, ${lastAnalysisResult.majorCount} Major). High risk flagged at ${lastAnalysisResult.highestRiskSite}.`}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <button
               onClick={() => navigate("/deviations")}
-              className="text-xs font-bold text-emerald-800 bg-white border border-emerald-300 hover:bg-emerald-50 px-3 py-1.5 rounded-md transition-colors"
+              className="text-xs font-bold text-emerald-900 bg-white border border-emerald-300 hover:bg-emerald-50 px-4 py-2 rounded-full transition-all shadow-xs"
             >
               Review Deviations ({scopedDeviations.length}) →
             </button>
             {can("RUN_COMPLIANCE_ANALYSIS") && (
               <button
                 onClick={resetToBaseline}
-                className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 px-2.5 py-1.5 rounded-md transition-colors"
+                className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-full transition-colors"
                 title="Reset cohort state to demonstrate compliance analysis workflow again"
               >
                 Reset Demo
@@ -343,15 +347,15 @@ export function DashboardPage() {
 
       {/* DATA FIX SUCCESS TOAST */}
       {dataFixSuccess && (
-        <div className="bg-teal-50 border border-teal-200 text-teal-900 p-3 rounded-lg text-xs font-semibold flex items-center justify-between animate-fade-in">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-teal-600" />
+        <div className="bg-teal-50 border border-teal-200 text-teal-900 p-4 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-xs animate-fade-in">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-5 h-5 text-teal-600" />
             <span>{dataFixSuccess}</span>
           </div>
           {can("RUN_COMPLIANCE_ANALYSIS") && (
             <button
               onClick={() => runComplianceAnalysis(user)}
-              className="underline text-teal-700 hover:text-teal-950 font-bold"
+              className="underline text-teal-800 hover:text-teal-950 font-bold"
             >
               Run Compliance Analysis Now
             </button>
@@ -363,92 +367,94 @@ export function DashboardPage() {
       {/* ROLE-SPECIFIC SPECIAL SECTION: CLINICAL DATA MANAGER DATA INTEGRITY HUB  */}
       {/* ========================================================================= */}
       {isDataManager && (
-        <div className="bg-gradient-to-br from-teal-50/70 to-slate-50 border border-teal-200 rounded-xl p-6 shadow-subtle">
-          <div className="flex items-start justify-between mb-4">
+        <div className="prohealth-card bg-gradient-to-br from-teal-50/90 via-white to-sky-50/40 border border-teal-100 rounded-3xl p-6 sm:p-8 shadow-glass">
+          <div className="flex items-start justify-between mb-5">
             <div>
-              <div className="flex items-center gap-2">
-                <Database className="w-5 h-5 text-teal-700" />
-                <h2 className="text-base font-bold text-slate-900">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-xs">
+                  <Database className="w-4 h-4" />
+                </div>
+                <h2 className="text-base font-extrabold text-slate-900">
                   eCRF Query & Data Completeness Action Center
                 </h2>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-100 text-teal-800 border border-teal-300">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-300">
                   Data Manager Actionable
                 </span>
               </div>
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
                 Directly correct data entry gaps, missing laboratory panels, and invalid dosing records. Corrected records immediately write to the 21 CFR Part 11 audit log and resolve deviations upon running analysis.
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {/* Action 1: PT-1046 Missing CBC */}
-            <div className="p-3.5 rounded-lg bg-white border border-teal-200 shadow-xs flex flex-col justify-between">
+            <div className="p-4 rounded-2xl bg-white border border-teal-100 shadow-xs flex flex-col justify-between hover:shadow-float transition-all">
               <div>
-                <div className="flex items-center justify-between text-xs mb-1">
+                <div className="flex items-center justify-between text-xs mb-1.5">
                   <span className="font-mono font-bold text-slate-900">PT-1046</span>
-                  <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">Missing Lab</span>
+                  <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">Missing Lab</span>
                 </div>
-                <div className="text-xs font-semibold text-slate-800">CBC with Differential</div>
-                <p className="text-[11px] text-slate-500 mt-1">Lab result not entered prior to Visit 3 primary efficacy endpoint.</p>
+                <div className="text-xs font-bold text-slate-800">CBC with Differential</div>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">Lab result not entered prior to Visit 3 primary endpoint.</p>
               </div>
               <button
                 onClick={() => handleQuickFixLab("PT-1046")}
-                className="mt-3 w-full py-1.5 px-3 bg-teal-700 hover:bg-teal-800 text-white rounded text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                className="mt-3.5 w-full py-2 px-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all"
               >
                 <span>Upload Lab Result</span>
               </button>
             </div>
 
             {/* Action 2: PT-1042 Dose Discrepancy */}
-            <div className="p-3.5 rounded-lg bg-white border border-teal-200 shadow-xs flex flex-col justify-between">
+            <div className="p-4 rounded-2xl bg-white border border-teal-100 shadow-xs flex flex-col justify-between hover:shadow-float transition-all">
               <div>
-                <div className="flex items-center justify-between text-xs mb-1">
+                <div className="flex items-center justify-between text-xs mb-1.5">
                   <span className="font-mono font-bold text-slate-900">PT-1042</span>
-                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Dose Discrepancy</span>
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">Dose Discrepancy</span>
                 </div>
-                <div className="text-xs font-semibold text-slate-800">150mg QD Recorded</div>
-                <p className="text-[11px] text-slate-500 mt-1">Protocol mandates 100mg QD. eCRF dose entry discrepancy pending audit.</p>
+                <div className="text-xs font-bold text-slate-800">150mg QD Recorded</div>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">Protocol mandates 100mg QD. eCRF dose discrepancy pending.</p>
               </div>
               <button
                 onClick={() => handleQuickFixDose("PT-1042")}
-                className="mt-3 w-full py-1.5 px-3 bg-teal-700 hover:bg-teal-800 text-white rounded text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                className="mt-3.5 w-full py-2 px-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all"
               >
                 <span>Correct Dose to 100mg</span>
               </button>
             </div>
 
             {/* Action 3: PT-1030 Missing Vitals */}
-            <div className="p-3.5 rounded-lg bg-white border border-teal-200 shadow-xs flex flex-col justify-between">
+            <div className="p-4 rounded-2xl bg-white border border-teal-100 shadow-xs flex flex-col justify-between hover:shadow-float transition-all">
               <div>
-                <div className="flex items-center justify-between text-xs mb-1">
+                <div className="flex items-center justify-between text-xs mb-1.5">
                   <span className="font-mono font-bold text-slate-900">PT-1030</span>
-                  <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">Missing Vitals</span>
+                  <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">Missing Vitals</span>
                 </div>
-                <div className="text-xs font-semibold text-slate-800">Visit 2 Vital Signs</div>
-                <p className="text-[11px] text-slate-500 mt-1">Blood pressure and heart rate unrecorded at 14-day study interval.</p>
+                <div className="text-xs font-bold text-slate-800">Visit 2 Vital Signs</div>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">Blood pressure & heart rate unrecorded at 14-day window.</p>
               </div>
               <button
                 onClick={() => handleQuickFixVitals("PT-1030")}
-                className="mt-3 w-full py-1.5 px-3 bg-teal-700 hover:bg-teal-800 text-white rounded text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                className="mt-3.5 w-full py-2 px-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all"
               >
                 <span>Record Vitals (124/80)</span>
               </button>
             </div>
 
             {/* Action 4: PT-1050 Missing CBC */}
-            <div className="p-3.5 rounded-lg bg-white border border-teal-200 shadow-xs flex flex-col justify-between">
+            <div className="p-4 rounded-2xl bg-white border border-teal-100 shadow-xs flex flex-col justify-between hover:shadow-float transition-all">
               <div>
-                <div className="flex items-center justify-between text-xs mb-1">
+                <div className="flex items-center justify-between text-xs mb-1.5">
                   <span className="font-mono font-bold text-slate-900">PT-1050</span>
-                  <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">Missing Lab</span>
+                  <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">Missing Lab</span>
                 </div>
-                <div className="text-xs font-semibold text-slate-800">CBC Panel Pending</div>
-                <p className="text-[11px] text-slate-500 mt-1">Safety hematology record missing from central laboratory HL7 feed.</p>
+                <div className="text-xs font-bold text-slate-800">CBC Panel Pending</div>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">Hematology record missing from central laboratory HL7 feed.</p>
               </div>
               <button
                 onClick={() => handleQuickFixLab("PT-1050")}
-                className="mt-3 w-full py-1.5 px-3 bg-teal-700 hover:bg-teal-800 text-white rounded text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                className="mt-3.5 w-full py-2 px-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all"
               >
                 <span>Upload Lab Result</span>
               </button>
@@ -461,25 +467,27 @@ export function DashboardPage() {
       {/* ROLE-SPECIFIC SPECIAL SECTION: SPONSOR / STUDY MANAGER GOVERNANCE VIEW   */}
       {/* ========================================================================= */}
       {isSponsor && (
-        <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-6 shadow-subtle">
-          <div className="flex items-start justify-between mb-4">
+        <div className="prohealth-card bg-gradient-to-br from-amber-50/80 via-white to-orange-50/40 border border-amber-100 rounded-3xl p-6 sm:p-8 shadow-glass">
+          <div className="flex items-start justify-between mb-5">
             <div>
-              <div className="flex items-center gap-2">
-                <Crown className="w-5 h-5 text-amber-700" />
-                <h2 className="text-base font-bold text-slate-900">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-xs">
+                  <Crown className="w-4 h-4" />
+                </div>
+                <h2 className="text-base font-extrabold text-slate-900">
                   Sponsor Governance & Regulatory Filing Readiness
                 </h2>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
                   Executive Sign-Off Authority
                 </span>
               </div>
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
                 You hold sole authority to grant final approval for CAPAs, freeze protocol amendments, and authorize regulatory dossier submissions for FDA / EMA review.
               </p>
             </div>
             <button
               onClick={() => navigate("/capa")}
-              className="px-3.5 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-bold shadow-sm flex items-center gap-1.5"
+              className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-full text-xs font-bold shadow-glow flex items-center gap-1.5 transition-all"
             >
               <ShieldCheck className="w-4 h-4" />
               <span>Review Pending CAPAs ({capas.filter(c => c.status !== "Approved").length})</span>
@@ -487,38 +495,38 @@ export function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-            <div className="bg-white p-4 rounded-lg border border-amber-200">
-              <span className="text-slate-400 font-semibold uppercase text-[10px]">CAPA Approvals</span>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-xl font-bold text-slate-900 font-mono">
+            <div className="bg-white p-4 rounded-2xl border border-amber-100 shadow-xs">
+              <span className="text-slate-400 font-bold uppercase text-[10px]">CAPA Approvals</span>
+              <div className="mt-1.5 flex items-baseline gap-2">
+                <span className="text-xl font-extrabold text-slate-900 font-mono">
                   {capas.filter(c => c.status === "Approved").length} / {capas.length}
                 </span>
-                <span className="text-emerald-700 font-semibold">Authorized</span>
+                <span className="text-emerald-700 font-bold">Authorized</span>
               </div>
             </div>
 
-            <div className="bg-white p-4 rounded-lg border border-amber-200">
-              <span className="text-slate-400 font-semibold uppercase text-[10px]">21 CFR Part 11 Audit Trail</span>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-xl font-bold text-slate-900 font-mono">
+            <div className="bg-white p-4 rounded-2xl border border-amber-100 shadow-xs">
+              <span className="text-slate-400 font-bold uppercase text-[10px]">21 CFR Part 11 Audit Trail</span>
+              <div className="mt-1.5 flex items-baseline gap-2">
+                <span className="text-xl font-extrabold text-slate-900 font-mono">
                   {auditLogs.length} Records
                 </span>
                 <button 
                   onClick={() => navigate("/settings?tab=audit")}
-                  className="text-blue-700 hover:underline font-medium text-[11px]"
+                  className="text-blue-600 hover:underline font-bold text-[11px]"
                 >
                   View Log →
                 </button>
               </div>
             </div>
 
-            <div className="bg-white p-4 rounded-lg border border-amber-200">
-              <span className="text-slate-400 font-semibold uppercase text-[10px]">Trial GCP Readiness</span>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-xl font-bold text-slate-900 font-mono">
+            <div className="bg-white p-4 rounded-2xl border border-amber-100 shadow-xs">
+              <span className="text-slate-400 font-bold uppercase text-[10px]">Trial GCP Readiness</span>
+              <div className="mt-1.5 flex items-baseline gap-2">
+                <span className="text-xl font-extrabold text-slate-900 font-mono">
                   {trialMetrics.complianceScore}%
                 </span>
-                <span className="text-blue-700 font-semibold">GCP Compliant</span>
+                <span className="text-blue-600 font-bold">GCP Compliant</span>
               </div>
             </div>
           </div>
@@ -672,43 +680,43 @@ export function DashboardPage() {
       </div>
 
       {/* AI Copilot Executive Synthesis / Role Insights */}
-      <div className="p-5 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/70 via-white to-slate-50 shadow-subtle">
-        <div className="flex items-start gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm mt-0.5">
+      <div className="prohealth-card rounded-3xl border border-blue-100/90 bg-gradient-to-br from-blue-50/70 via-white to-sky-50/40 p-6 shadow-glass">
+        <div className="flex items-start gap-4">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-sky-500 text-white flex items-center justify-center flex-shrink-0 shadow-glow mt-0.5">
             <Sparkles className="w-5 h-5" />
           </div>
           <div className="flex-1">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-slate-900 text-sm">
+              <div className="flex items-center gap-2.5">
+                <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">
                   {isInvestigator ? "Agentic Copilot Summary — Metro General (Site 03)" : executiveInsight.title}
                 </h3>
-                <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200">
+                <span className="text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
                   {isInvestigator ? "SITE-03 ADVISORY" : executiveInsight.badge}
                 </span>
               </div>
-              <span className="text-[11px] text-slate-400 font-medium">
+              <span className="text-[11px] text-slate-400 font-semibold">
                 Verified against ICH GCP E6(R2) §5.18 & Protocol CT-101
               </span>
             </div>
 
-            <p className="mt-2 text-xs text-slate-700 leading-relaxed font-medium">
+            <p className="mt-2 text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">
               {isInvestigator 
                 ? "Metro General (Site 03) has recorded recurrent visit scheduling delays (e.g. PT-1042 Day 20, PT-1043 Day 36) and two prohibited substance occurrences. An automated CAPA (CAPA-2026-001) has been drafted for Principal Investigator response. Immediate patient reassessment is advised for PT-1043."
                 : executiveInsight.summary}
             </p>
 
-            <div className="mt-3.5 pt-3 border-t border-blue-100 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              <div className="flex items-start gap-2 text-slate-700">
-                <div className="w-1.5 h-1.5 rounded-full bg-rose-500 mt-1.5 flex-shrink-0" />
+            <div className="mt-4 pt-3.5 border-t border-blue-100/80 grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs">
+              <div className="flex items-start gap-2.5 text-slate-700">
+                <div className="w-2 h-2 rounded-full bg-rose-500 mt-1.5 flex-shrink-0" />
                 <span>
-                  <strong>Root Cause Driver:</strong> {isInvestigator ? "Coordinator staff turnover and lack of electronic visit window calendar reminders." : executiveInsight.keyDriver}
+                  <strong className="text-slate-900">Root Cause Driver:</strong> {isInvestigator ? "Coordinator staff turnover and lack of electronic visit window calendar reminders." : executiveInsight.keyDriver}
                 </span>
               </div>
-              <div className="flex items-start gap-2 text-slate-700">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5 flex-shrink-0" />
+              <div className="flex items-start gap-2.5 text-slate-700">
+                <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 flex-shrink-0" />
                 <span>
-                  <strong>Recommended Next Action:</strong> {isInvestigator ? "Submit formal Site Action Plan on CAPA-2026-001 and confirm staff retraining." : executiveInsight.recommendedAction}
+                  <strong className="text-slate-900">Recommended Next Action:</strong> {isInvestigator ? "Submit formal Site Action Plan on CAPA-2026-001 and confirm staff retraining." : executiveInsight.recommendedAction}
                 </span>
               </div>
             </div>
@@ -720,11 +728,11 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left: Scoped Priority Deviations Table (7 cols) */}
-        <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200 p-5 shadow-subtle flex flex-col justify-between">
+        <div className="lg:col-span-7 prohealth-card bg-white/95 backdrop-blur-xl rounded-3xl border border-blue-100 p-6 shadow-glass flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="font-bold text-slate-900 text-sm">
+                <h2 className="font-extrabold text-slate-900 text-sm sm:text-base">
                   {isInvestigator ? "Site 03 Priority Protocol Deviations" : "Priority Deviations Requiring Clinical Review"}
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -735,7 +743,7 @@ export function DashboardPage() {
               </div>
               <button
                 onClick={() => navigate("/deviations")}
-                className="text-xs font-semibold text-blue-700 hover:text-blue-800 flex items-center gap-1"
+                className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
               >
                 <span>View All ({scopedDeviations.length})</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -747,20 +755,20 @@ export function DashboardPage() {
                 <div
                   key={dev.id}
                   onClick={() => setSelectedDeviation(dev)}
-                  className="p-3 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-slate-50/80 transition-all cursor-pointer flex items-center justify-between gap-3 group"
+                  className="p-3.5 rounded-2xl border border-slate-100 hover:border-blue-300 hover:bg-blue-50/40 transition-all cursor-pointer flex items-center justify-between gap-3 group"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs font-bold text-slate-900">{dev.id}</span>
                       <SeverityBadge severity={dev.severity} />
-                      <span className="text-[11px] font-medium text-slate-500 font-mono">
+                      <span className="text-[11px] font-semibold text-slate-500 font-mono">
                         {dev.patientId} • {dev.siteCode || dev.siteId}
                       </span>
                     </div>
-                    <div className="mt-1 text-xs font-semibold text-slate-800 truncate">
+                    <div className="mt-1 text-xs font-bold text-slate-800 truncate">
                       {dev.description || dev.actual || dev.explanation}
                     </div>
-                    <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                    <div className="text-[11px] text-slate-500 truncate mt-0.5 font-medium">
                       {dev.explanationSummary || dev.ruleViolated || dev.expected}
                     </div>
                   </div>
@@ -771,7 +779,7 @@ export function DashboardPage() {
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <div className="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Showing top {Math.min(5, scopedDeviations.length)} of {scopedDeviations.length} scoped deviations</span>
             <span className="font-mono font-bold text-rose-600">
               {criticalCount} Critical Deviations Active
@@ -780,17 +788,17 @@ export function DashboardPage() {
         </div>
 
         {/* Right: Site Comparison (for Trial-wide roles) OR Site 03 Deep Dive (for Investigator) (5 cols) */}
-        <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 p-5 shadow-subtle flex flex-col justify-between">
+        <div className="lg:col-span-5 prohealth-card bg-white/95 backdrop-blur-xl rounded-3xl border border-blue-100 p-6 shadow-glass flex flex-col justify-between">
           {!isInvestigator ? (
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="font-bold text-slate-900 text-sm">Site Risk Comparison Matrix</h2>
+                  <h2 className="font-extrabold text-slate-900 text-sm sm:text-base">Site Risk Comparison Matrix</h2>
                   <p className="text-xs text-slate-500 mt-0.5">Continuous score (0–100) calculated from patient deviations</p>
                 </div>
                 <button
                   onClick={() => navigate("/sites")}
-                  className="text-xs font-semibold text-blue-700 hover:text-blue-800 flex items-center gap-1"
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
                 >
                   <span>All Sites</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
@@ -801,7 +809,7 @@ export function DashboardPage() {
               <div className="h-52 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={siteBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} />
                     <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "#64748b" }} />
                     <Tooltip
@@ -809,7 +817,7 @@ export function DashboardPage() {
                         if (active && payload && payload.length) {
                           const d = payload[0].payload;
                           return (
-                            <div className="bg-slate-900 text-white p-2.5 rounded-lg text-xs shadow-lg">
+                            <div className="prohealth-card bg-slate-900 text-white p-3 rounded-xl text-xs shadow-float">
                               <div className="font-bold">{d.name}: {d.fullName}</div>
                               <div className="text-slate-300 mt-1">
                                 Risk Score: <span className="font-bold text-amber-400">{d.score}/100</span>
@@ -825,7 +833,7 @@ export function DashboardPage() {
                     <Bar 
                       dataKey="score" 
                       fill="#2563eb" 
-                      radius={[4, 4, 0, 0]}
+                      radius={[6, 6, 0, 0]}
                     />
                   </BarChart>
                 </ResponsiveContainer>
@@ -835,39 +843,39 @@ export function DashboardPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="font-bold text-slate-900 text-sm">Site 03 Patient Adherence Breakdown</h2>
+                  <h2 className="font-extrabold text-slate-900 text-sm sm:text-base">Site 03 Patient Adherence Breakdown</h2>
                   <p className="text-xs text-slate-500 mt-0.5">Patient safety compliance at Metro General</p>
                 </div>
                 <RoleBadge role={user.role} assignedSite={user.assignedSite} size="sm" />
               </div>
 
               <div className="space-y-3">
-                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200">
-                  <div className="flex items-center justify-between text-xs font-bold text-rose-900 mb-1">
+                <div className="p-3.5 rounded-2xl bg-rose-50/80 border border-rose-200">
+                  <div className="flex items-center justify-between text-xs font-bold text-rose-950 mb-1">
                     <span>Critical Safety Flags</span>
                     <span className="font-mono">2 Participants</span>
                   </div>
-                  <p className="text-xs text-rose-700">
+                  <p className="text-xs text-rose-800 leading-relaxed">
                     PT-1043 (Prohibited CYP3A4 inhibitor Drug-X) & PT-1051 (200mg dose breach).
                   </p>
                 </div>
 
-                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
-                  <div className="flex items-center justify-between text-xs font-bold text-amber-900 mb-1">
+                <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200">
+                  <div className="flex items-center justify-between text-xs font-bold text-amber-950 mb-1">
                     <span>Visit Window Lapses</span>
                     <span className="font-mono">3 Participants</span>
                   </div>
-                  <p className="text-xs text-amber-700">
+                  <p className="text-xs text-amber-800 leading-relaxed">
                     PT-1042 (Day 20, +6d late), PT-1045 (Day 38, +5d late), PT-1055 (Day 19, +2d late).
                   </p>
                 </div>
 
-                <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
-                  <div className="flex items-center justify-between text-xs font-bold text-blue-900 mb-1">
+                <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200">
+                  <div className="flex items-center justify-between text-xs font-bold text-blue-950 mb-1">
                     <span>Laboratory Adherence</span>
                     <span className="font-mono">3 Missing CBCs</span>
                   </div>
-                  <p className="text-xs text-blue-700">
+                  <p className="text-xs text-blue-800 leading-relaxed">
                     Central lab data coordinator alerted for PT-1046, PT-1048, and PT-1050.
                   </p>
                 </div>
@@ -875,30 +883,34 @@ export function DashboardPage() {
             </div>
           )}
 
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <div className="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Protocol v3.2 Engine</span>
-            <span className="font-semibold text-slate-700">21 CFR 312 Scoped</span>
+            <span className="font-bold text-slate-700">21 CFR 312 Scoped</span>
           </div>
         </div>
       </div>
 
       {/* Drawers */}
-      <DeviationDetailDrawer
-        deviation={selectedDeviation}
-        onClose={() => setSelectedDeviation(null)}
-        onSelectPatient={handleSelectPatient}
-      />
+      {selectedDeviation && (
+        <DeviationDetailDrawer
+          deviation={selectedDeviation}
+          onClose={() => setSelectedDeviation(null)}
+          onSelectPatient={handleSelectPatient}
+        />
+      )}
 
-      <PatientDetailDrawer
-        patient={selectedPatientObj}
-        patientProfile={selectedPatientProf}
-        deviations={deviations}
-        onClose={() => setSelectedPatientId(null)}
-        onSelectDeviation={(d) => {
-          setSelectedPatientId(null);
-          setSelectedDeviation(d);
-        }}
-      />
+      {selectedPatientId && selectedPatientObj && (
+        <PatientDetailDrawer
+          patient={selectedPatientObj}
+          patientProfile={selectedPatientProf}
+          deviations={deviations}
+          onClose={() => setSelectedPatientId(null)}
+          onSelectDeviation={(d) => {
+            setSelectedPatientId(null);
+            setSelectedDeviation(d);
+          }}
+        />
+      )}
     </div>
   );
 }

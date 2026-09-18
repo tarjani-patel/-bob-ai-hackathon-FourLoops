@@ -98,26 +98,26 @@ export function SettingsPage() {
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
       {/* Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="prohealth-card bg-white/95 backdrop-blur-xl rounded-3xl border border-blue-100 p-6 sm:p-8 shadow-glass flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <div className="flex items-center gap-2 mb-1.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               System Settings & Study Governance
             </h1>
-            <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+            <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full shadow-xs">
               Sponsor / Study Manager Access
             </span>
             <RoleBadge role={user?.role} assignedSite={user?.assignedSite} size="sm" />
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
             Configure compliance engine tolerances, inspect the 21 CFR Part 11 audit log, and manage clinical role privileges.
           </p>
         </div>
 
         {savedSuccess && (
-          <div className="flex items-center gap-1.5 text-xs text-emerald-800 bg-emerald-50 border border-emerald-300 px-3 py-1.5 rounded-lg animate-fade-in">
+          <div className="flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50 border border-emerald-300 px-4 py-2 rounded-full shadow-xs animate-fade-in">
             <Check className="w-4 h-4 text-emerald-600" />
-            <span className="font-semibold">Settings saved and logged to audit trail</span>
+            <span className="font-bold">Settings saved and logged to audit trail</span>
           </div>
         )}
       </div>
@@ -125,7 +125,7 @@ export function SettingsPage() {
       {/* Main Settings Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Navigation Sidebar (3 cols) */}
-        <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 p-2 shadow-subtle space-y-1">
+        <div className="lg:col-span-3 prohealth-card bg-white/95 backdrop-blur-xl rounded-3xl border border-blue-100 p-3 shadow-glass space-y-1.5">
           {SECTIONS.map((sec) => {
             const Icon = sec.icon;
             const isActive = sec.id === activeTab;
@@ -134,13 +134,13 @@ export function SettingsPage() {
               <button
                 key={sec.id}
                 onClick={() => setActiveTab(sec.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors text-left ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all text-left ${
                   isActive
-                    ? "bg-blue-50 text-blue-800 font-bold border border-blue-200 shadow-xs"
+                    ? "bg-blue-50/90 text-blue-800 font-bold border border-blue-200 shadow-xs"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? "text-blue-700" : "text-slate-400"}`} />
+                <Icon className={`w-4 h-4 ${isActive ? "text-blue-600" : "text-slate-400"}`} />
                 <span>{sec.name}</span>
               </button>
             );
@@ -148,7 +148,7 @@ export function SettingsPage() {
         </div>
 
         {/* Setting Content Panel (9 cols) */}
-        <div className="lg:col-span-9 bg-white rounded-xl border border-slate-200 p-6 shadow-subtle min-h-[500px]">
+        <div className="lg:col-span-9 prohealth-card bg-white/95 backdrop-blur-xl rounded-3xl border border-blue-100 p-6 sm:p-8 shadow-glass min-h-[500px]">
           
           {/* USERS & ACCESS (RBAC) */}
           {activeTab === "users" && (

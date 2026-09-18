@@ -21,7 +21,6 @@ import { useNavigate } from "react-router-dom";
 
 export function SiteDetailDrawer({ site, onClose, onSelectDeviation }) {
   const navigate = useNavigate();
-  if (!site) return null;
 
   const [aiLoading, setAiLoading] = useState(false);
   const [aiInsight, setAiInsight] = useState(null);
@@ -32,6 +31,8 @@ export function SiteDetailDrawer({ site, onClose, onSelectDeviation }) {
     setAiError(null);
     setAiLoading(false);
   }, [site?.siteCode || site?.id]);
+
+  if (!site) return null;
 
   const handleGenerateInsight = async () => {
     setAiLoading(true);

@@ -22,9 +22,6 @@ import { useNavigate } from "react-router-dom";
 
 export function DeviationDetailDrawer({ deviation, onClose, onSelectPatient }) {
   const navigate = useNavigate();
-  if (!deviation) return null;
-
-  const explanation = generateDeviationExplanation(deviation);
 
   const [aiLoading, setAiLoading] = useState(false);
   const [aiExplanation, setAiExplanation] = useState(null);
@@ -35,6 +32,10 @@ export function DeviationDetailDrawer({ deviation, onClose, onSelectPatient }) {
     setAiError(null);
     setAiLoading(false);
   }, [deviation?.id]);
+
+  if (!deviation) return null;
+
+  const explanation = generateDeviationExplanation(deviation);
 
   const handleExplainWithAI = async () => {
     setAiLoading(true);

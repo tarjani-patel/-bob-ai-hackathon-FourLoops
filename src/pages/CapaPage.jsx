@@ -68,18 +68,18 @@ export function CapaPage() {
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
       {/* Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="prohealth-card bg-white/95 backdrop-blur-xl rounded-3xl border border-blue-100 p-6 sm:p-8 shadow-glass flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <div className="flex items-center gap-2 mb-1.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {isInvestigator ? "Site 03 Corrective & Preventive Actions (CAPA)" : "CAPA Oversight & Preventive Actions"}
             </h1>
-            <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+            <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full shadow-xs">
               {scopedCapas.length} Active Plans
             </span>
             <RoleBadge role={user?.role} assignedSite={user?.assignedSite} size="sm" />
           </div>
-          <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
             {isInvestigator
               ? "Autonomous action plans generated for Metro General scheduling and compliance anomalies. Principal Investigator response requested."
               : "Autonomous Corrective and Preventive Action plans generated directly from deviation clusters and site risk anomalies."}
@@ -88,24 +88,24 @@ export function CapaPage() {
 
         <button
           onClick={() => alert(`Comprehensive CAPA Audit Dossier (${scopedCapas.length} plans) exported.`)}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-slate-700 hover:text-blue-600 text-xs font-bold shadow-xs transition-all"
         >
-          <FileDown className="w-4 h-4" />
+          <FileDown className="w-4 h-4 text-blue-600" />
           <span>Export CAPA Dossier</span>
         </button>
       </div>
 
       {/* Human Review Required Alert Banner */}
-      <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/60 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-amber-100 text-amber-800 flex-shrink-0">
+      <div className="prohealth-card rounded-2xl border border-amber-200 bg-amber-50/80 p-5 shadow-xs flex items-center justify-between">
+        <div className="flex items-center gap-3.5">
+          <div className="p-2.5 rounded-xl bg-amber-100 text-amber-800 flex-shrink-0">
             <UserCheck className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-xs font-bold text-amber-900 uppercase tracking-wide">
+            <h2 className="text-xs font-bold text-amber-950 uppercase tracking-wider">
               Mandatory Sponsor / PI Authorization Required
             </h2>
-            <p className="text-xs text-amber-800 mt-0.5">
+            <p className="text-xs text-amber-900 mt-0.5 leading-relaxed">
               TrialGuard AI proposes root causes and corrective steps from deterministic facts. In accordance with FDA 21 CFR 312 and GCP guidelines, final approval requires Sponsor / Study Manager authorization.
             </p>
           </div>
@@ -143,7 +143,7 @@ export function CapaPage() {
             <div
               key={capa.id}
               onClick={() => setSelectedCapa(capa)}
-              className="bg-white rounded-xl border border-slate-200 p-5 shadow-subtle hover:border-blue-400 hover:shadow-md transition-all cursor-pointer flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group"
+              className="prohealth-card bg-white/95 backdrop-blur-xl rounded-3xl border border-blue-100 p-6 shadow-sm hover:shadow-float hover:border-blue-300 transition-all cursor-pointer flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1.5">

@@ -23,11 +23,11 @@ import { useTrial } from "../context/TrialContext.jsx";
 import { PERMISSIONS } from "../auth/permissions.js";
 
 export function PatientDetailDrawer({ patient, patientProfile, deviations = [], onClose, onSelectDeviation }) {
-  if (!patient) return null;
-
   const { can, user } = useAuth();
   const { editPatientData, runComplianceAnalysis } = useTrial();
   const [successMessage, setSuccessMessage] = useState("");
+
+  if (!patient) return null;
 
   const patientDeviations = deviations.filter((d) => d.patientId === patient.id);
 

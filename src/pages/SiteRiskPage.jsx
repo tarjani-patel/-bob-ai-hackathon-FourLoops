@@ -69,18 +69,18 @@ export function SiteRiskPage() {
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
       {/* Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="prohealth-card bg-white/95 backdrop-blur-xl rounded-3xl border border-blue-100 p-6 sm:p-8 shadow-glass flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <div className="flex items-center gap-2 mb-1.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {isInvestigator ? "Site 03 Risk Profile & Monitoring Status" : "Site Risk & Monitoring Index"}
             </h1>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 shadow-xs">
               {isInvestigator ? "Assigned Center: Metro General" : "5 Active Investigation Centers"}
             </span>
             <RoleBadge role={user?.role} assignedSite={user?.assignedSite} size="sm" />
           </div>
-          <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
             {isInvestigator
               ? "Objective risk score and violation trends for Metro General Health Science Center (SITE-03) under ICH GCP E6(R2)."
               : "Deterministic risk engine continuously ranks trial investigation sites from patient deviation density and severity. Click any site to inspect risk drivers and predictive trajectory."}
@@ -89,11 +89,11 @@ export function SiteRiskPage() {
 
         {!isInvestigator ? (
           <div className="flex items-center gap-2 text-xs">
-            <span className="font-semibold text-slate-500">Filter:</span>
+            <span className="font-bold text-slate-500">Filter:</span>
             <select
               value={filterBand}
               onChange={(e) => setFilterBand(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none focus:bg-white"
+              className="px-3.5 py-2 bg-slate-50/80 border border-slate-200 rounded-xl text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/30 shadow-xs"
             >
               <option value="All">All Risk Bands ({siteRisks.length})</option>
               <option value="High">High Risk (61–100)</option>
@@ -102,7 +102,7 @@ export function SiteRiskPage() {
             </select>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-lg text-purple-800 text-xs font-bold">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-xl text-purple-800 text-xs font-bold shadow-xs">
             <Lock className="w-3.5 h-3.5 text-purple-600" />
             <span>Site Scoped: SITE-03</span>
           </div>
@@ -119,12 +119,12 @@ export function SiteRiskPage() {
             <div
               key={site.siteId}
               onClick={() => setSelectedSiteId(site.siteId)}
-              className={`bg-white rounded-xl border p-5 shadow-subtle hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group ${
+              className={`prohealth-card rounded-3xl border p-6 shadow-sm hover:shadow-float transition-all cursor-pointer flex flex-col justify-between group ${
                 isHigh 
-                  ? "border-rose-300 hover:border-rose-500 ring-1 ring-rose-200/60" 
+                  ? "bg-rose-50/20 border-rose-200 hover:border-rose-400 ring-2 ring-rose-300/20" 
                   : isMedium
-                  ? "border-amber-200 hover:border-amber-400"
-                  : "border-slate-200 hover:border-blue-400"
+                  ? "bg-amber-50/20 border-amber-200 hover:border-amber-400 ring-2 ring-amber-300/20"
+                  : "bg-white/95 border-blue-100/90 hover:border-blue-300"
               }`}
             >
               <div>

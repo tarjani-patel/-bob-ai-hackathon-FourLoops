@@ -8,6 +8,7 @@ import { Header } from "./components/Header.jsx";
 import { NotificationModal } from "./components/NotificationModal.jsx";
 
 // Pages
+import { LandingPage } from "./pages/LandingPage.jsx";
 import { LoginPage } from "./pages/LoginPage.jsx";
 import { RegisterPage } from "./pages/RegisterPage.jsx";
 import { AccessDeniedPage } from "./pages/AccessDeniedPage.jsx";
@@ -141,7 +142,8 @@ export default function App() {
       <AuthProvider>
         <TrialProvider>
           <Routes>
-            {/* Standalone Authentication Screens */}
+            {/* Standalone Authentication Screens & Public Landing */}
+            <Route path="/landing" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
