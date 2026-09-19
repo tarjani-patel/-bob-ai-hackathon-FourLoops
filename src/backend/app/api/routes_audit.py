@@ -1,10 +1,15 @@
 """Clinical Audit Trail Routes."""
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel
 from fastapi import APIRouter, Request, Query
 
 from ..data.store import store
 from ..models.audit import AuditEvent
 from ..services.rbac_service import get_current_user_context, check_site_access
+
+class SessionEventRequest(BaseModel):
+    action: str
+    details: Optional[Dict[str, Any]] = None
 
 router = APIRouter(prefix="/api/audit", tags=["Audit Trail"])
 
@@ -27,3 +32,20 @@ def get_audit_trail(
         site_id = assigned_site
 
     return store.get_audit_logs(site_id=site_id, role=role, action=action, limit=limit)
+
+
+@router.post("/session-event", response_model=AuditEvent)
+def record_session_event(req: SessionEventRequest, request: Request) -> AuditEvent:
+    """Records frontend session lifecycle events (login, logout, role switch) in the audit trail."""
+    user_ctx = get_current_user_context(request)
+    details = dict(req.details or {})
+    details.setdefault("userEmail", user_ctx.get("user_id"))
+    return store.record_audit(
+        action=req.action,
+        performed_by=user_ctx["user_name"],
+        role=user_ctx["role"],
+        site_id=user_ctx.get("site_id"),
+        target_id=user_ctx.get("user_id") or "SESSION",
+        details=details
+    )
+

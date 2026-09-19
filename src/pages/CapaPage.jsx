@@ -12,7 +12,9 @@ import {
   ChevronRight, 
   Sparkles, 
   Play, 
-  Lock 
+  Lock,
+  Download,
+  Loader2
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useTrial } from "../context/TrialContext.jsx";
@@ -20,6 +22,7 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { CapaDetailDrawer } from "../components/CapaDetailDrawer.jsx";
 import { RoleBadge } from "../auth/RoleBadge.jsx";
 import { getVisibleCapas } from "../auth/dataScoping.js";
+import { exportCapaDossier } from "../api/index.js";
 
 export function CapaPage() {
   const { capas, updateCapaStatus, hasAnalyzed, runComplianceAnalysis, isAnalyzing } = useTrial();
@@ -29,6 +32,7 @@ export function CapaPage() {
   const [selectedCapa, setSelectedCapa] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("All");
+  const [exportingFormat, setExportingFormat] = useState(null);
 
   // Scoped CAPAs
   const scopedCapas = useMemo(() => {
@@ -39,6 +43,21 @@ export function CapaPage() {
     if (!selectedCapa) return null;
     return scopedCapas.find((c) => c.id === selectedCapa.id) || selectedCapa;
   }, [selectedCapa, scopedCapas]);
+
+  const handleExportDossier = async (format) => {
+    setExportingFormat(format);
+    try {
+      await exportCapaDossier(format, {
+        siteId: isInvestigator ? user?.assignedSite : undefined,
+        priority: priorityFilter !== "All" ? priorityFilter : undefined,
+      });
+    } catch (err) {
+      console.error("Failed to export CAPA dossier:", err);
+      alert(`Export failed: ${err.message}`);
+    } finally {
+      setExportingFormat(null);
+    }
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -86,13 +105,49 @@ export function CapaPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => alert(`Comprehensive CAPA Audit Dossier (${scopedCapas.length} plans) exported.`)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-slate-700 hover:text-blue-600 text-xs font-bold shadow-xs transition-all"
-        >
-          <FileDown className="w-4 h-4 text-blue-600" />
-          <span>Export CAPA Dossier</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => handleExportDossier("json")}
+            disabled={exportingFormat === "json"}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold transition-all disabled:opacity-50"
+            title="Export full CAPA audit dossier in JSON format"
+          >
+            {exportingFormat === "json" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+            ) : (
+              <FileDown className="w-3.5 h-3.5 text-blue-600" />
+            )}
+            <span>Export JSON</span>
+          </button>
+
+          <button
+            onClick={() => handleExportDossier("csv")}
+            disabled={exportingFormat === "csv"}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold transition-all disabled:opacity-50"
+            title="Export tabular CAPA dossier in CSV format"
+          >
+            {exportingFormat === "csv" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+            ) : (
+              <FileDown className="w-3.5 h-3.5 text-emerald-600" />
+            )}
+            <span>Export CSV</span>
+          </button>
+
+          <button
+            onClick={() => handleExportDossier("doc")}
+            disabled={exportingFormat === "doc"}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white text-xs font-bold shadow-xs transition-all disabled:opacity-50"
+            title="Export regulatory Word document with full CAPA details"
+          >
+            {exportingFormat === "doc" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
+            <span>Export DOC</span>
+          </button>
+        </div>
       </div>
 
       {/* Human Review Required Alert Banner */}

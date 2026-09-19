@@ -18,6 +18,7 @@ import {
   runComplianceAnalysis as apiRunComplianceAnalysis,
   updatePatient as apiUpdatePatient,
   updateCAPA as apiUpdateCAPA,
+  updateProtocol as apiUpdateProtocol,
 } from "../api/index.js";
 
 const TrialContext = createContext(null);
@@ -501,6 +502,73 @@ export function TrialProvider({ children }) {
     });
   }, [apiHealthy, logAuditEvent]);
 
+  // Action: Update Protocol Tolerances
+  const updateProtocolTolerances = useCallback(async (tolerances, user) => {
+    // Optimistically update local protocol
+    setProtocol((prev) => {
+      const updatedVisits = (prev.visits || []).map((v) => {
+        if (v.visitNumber === 1 && tolerances.v1Window !== undefined) {
+          return {
+            ...v,
+            windowDaysMinus: tolerances.v1Window,
+            windowDaysPlus: tolerances.v1Window,
+            windowDescription: `Day 1 ± ${tolerances.v1Window} days (Day ${1 - tolerances.v1Window} to Day ${1 + tolerances.v1Window})`
+          };
+        }
+        if (v.visitNumber === 2 && tolerances.v2Window !== undefined) {
+          return {
+            ...v,
+            windowDaysMinus: tolerances.v2Window,
+            windowDaysPlus: tolerances.v2Window,
+            windowDescription: `Day 14 ± ${tolerances.v2Window} days (Day ${14 - tolerances.v2Window} to Day ${14 + tolerances.v2Window})`
+          };
+        }
+        if (v.visitNumber === 3 && tolerances.v3Window !== undefined) {
+          return {
+            ...v,
+            windowDaysMinus: tolerances.v3Window,
+            windowDaysPlus: tolerances.v3Window,
+            windowDescription: `Day 28 ± ${tolerances.v3Window} days (Day ${28 - tolerances.v3Window} to Day ${28 + tolerances.v3Window})`
+          };
+        }
+        return v;
+      });
+
+      return {
+        ...prev,
+        visits: updatedVisits,
+        investigationalProduct: {
+          ...prev.investigationalProduct,
+          targetDoseMg: tolerances.targetDose ?? prev.investigationalProduct?.targetDoseMg ?? 100
+        }
+      };
+    });
+
+    if (apiHealthy) {
+      try {
+        const updated = await apiUpdateProtocol(tolerances);
+        if (updated) {
+          setProtocol(updated);
+        }
+        const freshLogs = await getAuditLogs();
+        if (Array.isArray(freshLogs) && freshLogs.length > 0) {
+          setAuditLogs(freshLogs);
+        }
+      } catch (err) {
+        console.error("[TrialGuard API] Failed to update protocol tolerances on backend:", err);
+      }
+    }
+
+    logAuditEvent({
+      action: "PROTOCOL_TOLERANCES_UPDATED",
+      entityType: "SETTINGS",
+      entityId: "CT-101",
+      details: `Study Manager updated window tolerances (V1: ±${tolerances.v1Window ?? 3}d, V2: ±${tolerances.v2Window ?? 3}d, V3: ±${tolerances.v3Window ?? 5}d) and dose rules.`,
+      performedBy: user?.name || "Elena Rostova",
+      role: user?.role || "SPONSOR"
+    });
+  }, [apiHealthy, logAuditEvent]);
+
   // Action: Reset to Baseline
   const resetToBaseline = useCallback(() => {
     setPatients(SYNTHETIC_PATIENTS);
@@ -712,6 +780,7 @@ export function TrialProvider({ children }) {
     auditLogs,
     logAuditEvent,
     editPatientData,
+    updateProtocolTolerances,
     // API connection additions
     apiHealthy,
     isApiLoading,

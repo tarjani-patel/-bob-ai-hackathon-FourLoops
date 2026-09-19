@@ -23,8 +23,8 @@ CRITICAL OPERATIONAL BOUNDARIES:
 6. Structured Output: You MUST respond ONLY with a single valid, parseable JSON object adhering strictly to the specified schema. Do NOT include introductory text, explanations, or conversational markdown outside the JSON.
 """
 
-def build_deviation_explanation_prompt(deviation: Dict[str, Any]) -> str:
-    """Builds prompt to generate clinical/operational explanation for a specific verified deviation."""
+def build_deviation_explanation_prompt(deviation: Dict[str, Any]) -> tuple:
+    """Builds (system, user) prompt tuple for clinical/operational explanation of a verified deviation."""
     payload = {
         "deviationId": deviation.get("deviationId"),
         "patientId": deviation.get("patientId"),
@@ -48,9 +48,7 @@ def build_deviation_explanation_prompt(deviation: Dict[str, Any]) -> str:
         "limitations": "Explicit note on what external data cannot be verified from the current eCRF record alone."
     }
 
-    return f"""{SYSTEM_INSTRUCTION}
-
-TASK: Provide an AI-assisted clinical and operational interpretation for the following verified protocol deviation.
+    user_message = f"""TASK: Provide an AI-assisted clinical and operational interpretation for the following verified protocol deviation.
 
 INPUT DATA:
 {json.dumps(payload, indent=2)}
@@ -61,8 +59,11 @@ Respond with a single valid JSON object with EXACTLY these keys:
 
 JSON RESPONSE:"""
 
-def build_site_insight_prompt(site_data: Dict[str, Any]) -> str:
-    """Builds prompt to analyze multi-deviation patterns and emerging risk for an investigation site."""
+    return SYSTEM_INSTRUCTION, user_message
+
+
+def build_site_insight_prompt(site_data: Dict[str, Any]) -> tuple:
+    """Builds (system, user) prompt tuple for site risk pattern analysis."""
     payload = {
         "siteId": site_data.get("siteId"),
         "siteName": site_data.get("siteName"),
@@ -94,9 +95,7 @@ def build_site_insight_prompt(site_data: Dict[str, Any]) -> str:
         ]
     }
 
-    return f"""{SYSTEM_INSTRUCTION}
-
-TASK: Provide an objective site risk synthesis and pattern identification for the following clinical trial investigation center.
+    user_message = f"""TASK: Provide an objective site risk synthesis and pattern identification for the following clinical trial investigation center.
 
 INPUT DATA:
 {json.dumps(payload, indent=2)}
@@ -107,8 +106,11 @@ Respond with a single valid JSON object with EXACTLY these keys:
 
 JSON RESPONSE:"""
 
-def build_capa_recommendation_prompt(capa_data: Dict[str, Any]) -> str:
-    """Builds prompt to formulate a structured CAPA proposal based on deviation clusters."""
+    return SYSTEM_INSTRUCTION, user_message
+
+
+def build_capa_recommendation_prompt(capa_data: Dict[str, Any]) -> tuple:
+    """Builds (system, user) prompt tuple for CAPA root-cause and action recommendation."""
     payload = {
         "capaId": capa_data.get("capaId"),
         "siteId": capa_data.get("siteId"),
@@ -128,9 +130,7 @@ def build_capa_recommendation_prompt(capa_data: Dict[str, Any]) -> str:
         "priorityRationale": "Clear justification for urgency rating based on participant safety and ICH GCP compliance risk."
     }
 
-    return f"""{SYSTEM_INSTRUCTION}
-
-TASK: Propose a structured Corrective and Preventive Action (CAPA) plan for the observed clinical protocol quality problem.
+    user_message = f"""TASK: Propose a structured Corrective and Preventive Action (CAPA) plan for the observed clinical protocol quality problem.
 
 INPUT DATA:
 {json.dumps(payload, indent=2)}
@@ -140,3 +140,5 @@ Respond with a single valid JSON object with EXACTLY these keys:
 {json.dumps(schema_example, indent=2)}
 
 JSON RESPONSE:"""
+
+    return SYSTEM_INSTRUCTION, user_message

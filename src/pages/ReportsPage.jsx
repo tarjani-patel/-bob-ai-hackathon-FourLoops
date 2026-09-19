@@ -10,12 +10,15 @@ import {
   CheckCircle2, 
   FileCheck,
   AlertTriangle,
-  ExternalLink
+  ExternalLink,
+  FileDown,
+  Loader2
 } from "lucide-react";
 import { useTrial } from "../context/TrialContext.jsx";
 import { RiskBadge, SeverityBadge } from "../components/RiskBadge.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { RoleBadge } from "../auth/RoleBadge.jsx";
+import { exportReport } from "../api/index.js";
 
 const REPORT_TEMPLATES = [
   {
@@ -64,8 +67,25 @@ export function ReportsPage() {
   const { trialMetrics, siteRisks, deviations, protocol, capas } = useTrial();
   const { user } = useAuth();
   const [selectedReportId, setSelectedReportId] = useState("REP-01");
+  const [exportingFormat, setExportingFormat] = useState(null);
+  const [exportSuccess, setExportSuccess] = useState(null);
 
   const activeReport = REPORT_TEMPLATES.find((r) => r.id === selectedReportId) || REPORT_TEMPLATES[0];
+
+  const handleExport = async (format) => {
+    setExportingFormat(format);
+    setExportSuccess(null);
+    try {
+      const filename = await exportReport(selectedReportId, format);
+      setExportSuccess(`${format.toUpperCase()} exported`);
+      setTimeout(() => setExportSuccess(null), 3500);
+    } catch (err) {
+      console.error("Export report error:", err);
+      alert(`Export failed: ${err.message}`);
+    } finally {
+      setExportingFormat(null);
+    }
+  };
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
@@ -82,22 +102,63 @@ export function ReportsPage() {
           <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
             Automated regulatory reporting generated directly from deterministic trial compliance facts and risk calculations. Suitable for IRB submissions, sponsor audits, and FDA inspections.
           </p>
+          {exportSuccess && (
+            <div className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+              <span>{exportSuccess} successfully. Check your browser downloads.</span>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => window.print()}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-xs transition-all"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition-all"
+            title="Print report or save as PDF via browser print dialog"
           >
-            <Printer className="w-4 h-4 text-slate-500" />
-            <span>Print</span>
+            <Printer className="w-3.5 h-3.5 text-slate-500" />
+            <span>Print / PDF</span>
           </button>
+
           <button
-            onClick={() => alert(`Report "${activeReport.name}" exported as PDF with digital signature.`)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white text-xs font-bold shadow-glow transition-all hover:scale-105"
+            onClick={() => handleExport("json")}
+            disabled={exportingFormat === "json"}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold transition-all disabled:opacity-50"
+            title="Export full structured dataset in JSON"
           >
-            <Download className="w-4 h-4" />
-            <span>Export Report PDF</span>
+            {exportingFormat === "json" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+            ) : (
+              <FileDown className="w-3.5 h-3.5 text-blue-600" />
+            )}
+            <span>Export JSON</span>
+          </button>
+
+          <button
+            onClick={() => handleExport("csv")}
+            disabled={exportingFormat === "csv"}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold transition-all disabled:opacity-50"
+            title="Export tabular register in CSV format"
+          >
+            {exportingFormat === "csv" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+            ) : (
+              <FileDown className="w-3.5 h-3.5 text-emerald-600" />
+            )}
+            <span>Export CSV</span>
+          </button>
+
+          <button
+            onClick={() => handleExport("doc")}
+            disabled={exportingFormat === "doc"}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white text-xs font-bold shadow-xs transition-all disabled:opacity-50"
+            title="Export formatted Word document"
+          >
+            {exportingFormat === "doc" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
+            <span>Export DOC</span>
           </button>
         </div>
       </div>

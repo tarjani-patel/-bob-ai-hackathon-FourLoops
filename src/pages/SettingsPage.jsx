@@ -24,6 +24,7 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { ROLE_CONFIG } from "../auth/roleConfig.js";
 import { RoleBadge } from "../auth/RoleBadge.jsx";
 import { useLocation } from "react-router-dom";
+import { AccessRestricted } from "../auth/AccessRestricted.jsx";
 
 const SECTIONS = [
   { id: "profile", name: "Profile", icon: User },
@@ -36,11 +37,24 @@ const SECTIONS = [
   { id: "privacy", name: "Data & Privacy", icon: Shield },
 ];
 
+function renderAuditDetails(details) {
+  if (!details) return "-";
+  if (typeof details === "string") return details;
+  if (typeof details === "object") {
+    if (details.message) return details.message;
+    return Object.entries(details)
+      .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`)
+      .join(" | ");
+  }
+  return String(details);
+}
+
 export function SettingsPage() {
-  const { protocol, auditLogs, logAuditEvent } = useTrial();
+  const { protocol, auditLogs, logAuditEvent, updateProtocolTolerances } = useTrial();
   const { user, getStoredUsers } = useAuth();
   const location = useLocation();
 
+  const isSponsor = user?.role === "SPONSOR";
   const storedAccounts = getStoredUsers ? getStoredUsers() : [];
   const [activeTab, setActiveTab] = useState("users");
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -63,37 +77,83 @@ export function SettingsPage() {
   const [autoFlagProhibited, setAutoFlagProhibited] = useState(true);
   const [requireCbcBeforeV3, setRequireCbcBeforeV3] = useState(true);
 
-  // Notification toggles
-  const [emailAlerts, setEmailAlerts] = useState(true);
-  const [smsCriticalAlerts, setSmsCriticalAlerts] = useState(true);
-
-  const handleSave = (e) => {
-    e.preventDefault();
-    setSavedSuccess(true);
-    if (logAuditEvent) {
-      logAuditEvent({
-        action: "PROTOCOL_TOLERANCES_UPDATED",
-        entityType: "SETTINGS",
-        entityId: "CT-101",
-        details: `Study Manager updated window tolerances (V1: ±${v1Window}d, V2: ±${v2Window}d, V3: ±${v3Window}d) and dose rules.`,
-        performedBy: user?.name || "Elena Rostova",
-        role: user?.role || "SPONSOR"
-      });
+  // Sync with live protocol from backend/store
+  useEffect(() => {
+    if (protocol) {
+      const v1 = protocol.visits?.find((v) => v.visitNumber === 1);
+      const v2 = protocol.visits?.find((v) => v.visitNumber === 2);
+      const v3 = protocol.visits?.find((v) => v.visitNumber === 3);
+      if (v1 && v1.windowDaysPlus !== undefined) setV1Window(v1.windowDaysPlus);
+      if (v2 && v2.windowDaysPlus !== undefined) setV2Window(v2.windowDaysPlus);
+      if (v3 && v3.windowDaysPlus !== undefined) setV3Window(v3.windowDaysPlus);
+      if (protocol.investigationalProduct?.targetDoseMg) {
+        setTargetDose(protocol.investigationalProduct.targetDoseMg);
+      }
     }
-    setTimeout(() => setSavedSuccess(false), 3500);
+  }, [protocol]);
+
+  // Notification toggles persisted to localStorage
+  const [emailAlerts, setEmailAlerts] = useState(() => {
+    return localStorage.getItem("trialguard_notif_email") !== "false";
+  });
+  const [smsCriticalAlerts, setSmsCriticalAlerts] = useState(() => {
+    return localStorage.getItem("trialguard_notif_sms") !== "false";
+  });
+
+  const handleEmailToggle = (checked) => {
+    setEmailAlerts(checked);
+    localStorage.setItem("trialguard_notif_email", String(checked));
+  };
+
+  const handleSmsToggle = (checked) => {
+    setSmsCriticalAlerts(checked);
+    localStorage.setItem("trialguard_notif_sms", String(checked));
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    try {
+      if (updateProtocolTolerances) {
+        await updateProtocolTolerances({
+          v1Window,
+          v2Window,
+          v3Window,
+          targetDose,
+          autoFlagProhibited,
+          requireCbcBeforeV3
+        }, user);
+      }
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3500);
+    } catch (err) {
+      console.error("Failed to update protocol tolerances:", err);
+      alert(`Save failed: ${err.message}`);
+    }
   };
 
   const filteredAuditLogs = auditLogs.filter((log) => {
     if (!auditSearch.trim()) return true;
     const q = auditSearch.toLowerCase();
+    const detailsStr = typeof log.details === "string" 
+      ? log.details.toLowerCase() 
+      : JSON.stringify(log.details || "").toLowerCase();
     return (
-      log.id.toLowerCase().includes(q) ||
-      log.action.toLowerCase().includes(q) ||
-      log.details.toLowerCase().includes(q) ||
-      log.performedBy.toLowerCase().includes(q) ||
-      log.role.toLowerCase().includes(q)
+      (log.id && log.id.toLowerCase().includes(q)) ||
+      (log.action && log.action.toLowerCase().includes(q)) ||
+      detailsStr.includes(q) ||
+      (log.performedBy && log.performedBy.toLowerCase().includes(q)) ||
+      (log.role && log.role.toLowerCase().includes(q)) ||
+      (log.targetId && log.targetId.toLowerCase().includes(q))
     );
   });
+
+  if (!isSponsor) {
+    return (
+      <AccessRestricted
+        customMessage="Only Sponsor / Study Manager accounts are authorized to access Study Governance & System Settings."
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
@@ -274,8 +334,11 @@ export function SettingsPage() {
                           <td className="py-2.5 px-3 whitespace-nowrap font-sans">
                             <RoleBadge role={log.role} size="sm" />
                           </td>
-                          <td className="py-2.5 px-3 font-sans text-slate-700 max-w-sm truncate text-[11px]">
-                            {log.details}
+                          <td 
+                            className="py-2.5 px-3 font-sans text-slate-700 max-w-sm truncate text-[11px]"
+                            title={typeof log.details === "object" ? JSON.stringify(log.details, null, 2) : log.details}
+                          >
+                            {renderAuditDetails(log.details)}
                           </td>
                         </tr>
                       ))}
@@ -453,7 +516,7 @@ export function SettingsPage() {
                   <input
                     type="checkbox"
                     checked={emailAlerts}
-                    onChange={(e) => setEmailAlerts(e.target.checked)}
+                    onChange={(e) => handleEmailToggle(e.target.checked)}
                     className="w-4 h-4 text-blue-600 rounded"
                   />
                 </label>
@@ -466,7 +529,7 @@ export function SettingsPage() {
                   <input
                     type="checkbox"
                     checked={smsCriticalAlerts}
-                    onChange={(e) => setSmsCriticalAlerts(e.target.checked)}
+                    onChange={(e) => handleSmsToggle(e.target.checked)}
                     className="w-4 h-4 text-blue-600 rounded"
                   />
                 </label>

@@ -17,13 +17,14 @@ import {
   Save,
   Loader2,
   Info,
-  Wand2
+  Wand2,
+  Download
 } from "lucide-react";
 import { RiskBadge, SeverityBadge } from "./RiskBadge.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { useTrial } from "../context/TrialContext.jsx";
-import { getCAPARecommendationWithAI } from "../api/trialApi.js";
+import { getCAPARecommendationWithAI, exportCapa } from "../api/trialApi.js";
 
 export function CapaDetailDrawer({ capa, onClose, onUpdateStatus }) {
   if (!capa) return null;
@@ -73,6 +74,20 @@ export function CapaDetailDrawer({ capa, onClose, onUpdateStatus }) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiRecommendation, setAiRecommendation] = useState(null);
   const [aiError, setAiError] = useState(null);
+  const [exportingFormat, setExportingFormat] = useState(null);
+
+  const handleExportForm = async (format) => {
+    if (!capa?.id) return;
+    setExportingFormat(format);
+    try {
+      await exportCapa(capa.id, format);
+    } catch (err) {
+      console.error("Failed to export CAPA form:", err);
+      alert(`Export failed: ${err.message}`);
+    } finally {
+      setExportingFormat(null);
+    }
+  };
 
   const handleGenerateAIRecommendation = async () => {
     setAiLoading(true);
@@ -657,13 +672,36 @@ export function CapaDetailDrawer({ capa, onClose, onUpdateStatus }) {
 
         {/* Drawer Footer Actions */}
         <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
-          <button
-            onClick={() => alert(`CAPA Form for ${capa.id} exported to PDF package according to ICH GCP guidelines.`)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-300 font-medium text-slate-700 hover:bg-slate-100 transition-colors"
-          >
-            <FileDown className="w-4 h-4" />
-            <span>Export CAPA Form</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-slate-500 font-medium mr-1">Export:</span>
+            <button
+              onClick={() => handleExportForm("json")}
+              disabled={exportingFormat === "json"}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 text-[11px]"
+              title="Export CAPA regulatory record in JSON"
+            >
+              {exportingFormat === "json" ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileDown className="w-3 h-3 text-blue-600" />}
+              <span>JSON</span>
+            </button>
+            <button
+              onClick={() => handleExportForm("csv")}
+              disabled={exportingFormat === "csv"}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 text-[11px]"
+              title="Export CAPA regulatory record in CSV"
+            >
+              {exportingFormat === "csv" ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileDown className="w-3 h-3 text-emerald-600" />}
+              <span>CSV</span>
+            </button>
+            <button
+              onClick={() => handleExportForm("doc")}
+              disabled={exportingFormat === "doc"}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-200 font-semibold text-blue-800 hover:bg-blue-100 transition-colors disabled:opacity-50 text-[11px]"
+              title="Export CAPA regulatory Word document"
+            >
+              {exportingFormat === "doc" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3 text-blue-700" />}
+              <span>DOC</span>
+            </button>
+          </div>
 
           <div className="flex items-center gap-2">
             {/* Site Investigator Response Action */}

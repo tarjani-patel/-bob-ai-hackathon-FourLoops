@@ -6,6 +6,7 @@
   "description": "TrialGuard AI - Agentic Clinical-Trial Compliance Copilot",
   "scripts": {
     "dev": "vite",
+    "backend": "python -m uvicorn src.backend.app.main:app --port 8000 --reload",
     "build": "vite build",
     "preview": "vite preview"
   },

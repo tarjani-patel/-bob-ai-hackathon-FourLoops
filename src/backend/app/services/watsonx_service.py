@@ -86,14 +86,14 @@ class WatsonxService:
 
         try:
             from ibm_watsonx_ai.foundation_models import ModelInference
-            from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as GenParams
 
+            # The chat API uses OpenAI-compatible param names.
+            # max_new_tokens / min_new_tokens are text-generation params and are
+            # silently ignored by the chat endpoint; use max_tokens instead.
             parameters = {
-                GenParams.DECODING_METHOD: "greedy",
-                GenParams.MAX_NEW_TOKENS: 900,
-                GenParams.MIN_NEW_TOKENS: 1,
-                GenParams.TEMPERATURE: 0.1,
-                GenParams.REPETITION_PENALTY: 1.05,
+                "max_tokens": 900,
+                "temperature": 0.1,
+                "repetition_penalty": 1.05,
             }
 
             credentials = {
@@ -116,17 +116,36 @@ class WatsonxService:
                 detail=f"Failed to connect to IBM watsonx.ai: {sanitized_err}"
             )
 
-    def _generate_text(self, prompt: str) -> str:
-        """Executes prompt inference through IBM Granite with robust exception handling."""
+    def _generate_text(self, prompt: str, system: str = None) -> str:
+        """Executes prompt inference through IBM Granite using the chat API.
+
+        The older /ml/v1/text/generation endpoint is deprecated; this uses
+        /ml/v1/text/chat via ModelInference.chat() with a system + user message pair.
+        Pass `system` to supply an explicit system-role message; otherwise the prompt
+        is sent as a plain user message.
+        """
         client = self._get_model_client()
         try:
-            raw_response = client.generate_text(prompt=prompt)
+            messages = []
+            if system:
+                messages.append({"role": "system", "content": system})
+            messages.append({"role": "user", "content": prompt})
+            chat_response = client.chat(messages=messages)
+            # chat() returns a dict; extract the assistant message content.
+            raw_response = (
+                chat_response
+                .get("choices", [{}])[0]
+                .get("message", {})
+                .get("content", "")
+            )
             if not raw_response or not isinstance(raw_response, str):
-                raise ValueError("Received empty or non-string response from Granite.")
+                raise ValueError("Received empty or non-string content from Granite chat response.")
             return raw_response
         except HTTPException:
             raise
         except Exception as err:
+            # Clear the cached client so the next request re-instantiates a fresh connection.
+            self._model_client = None
             sanitized_err = str(err).replace(self.api_key, "***REDACTED***") if self.api_key else str(err)
             logger.error("[TrialGuard AI] Granite generation error: %s", sanitized_err)
             raise HTTPException(
@@ -160,8 +179,8 @@ class WatsonxService:
 
     def explain_deviation(self, req: ExplainDeviationRequest) -> DeviationExplanationAIResponse:
         """Generates AI clinical interpretation for a verified protocol deviation."""
-        prompt = build_deviation_explanation_prompt(req.model_dump())
-        raw_text = self._generate_text(prompt)
+        system, prompt = build_deviation_explanation_prompt(req.model_dump())
+        raw_text = self._generate_text(prompt, system=system)
         data = self._extract_and_parse_json(raw_text)
 
         try:
@@ -176,8 +195,8 @@ class WatsonxService:
 
     def generate_site_insight(self, req: SiteInsightRequest) -> SiteInsightAIResponse:
         """Generates AI pattern synthesis and emerging risk explanation for a clinical site."""
-        prompt = build_site_insight_prompt(req.model_dump())
-        raw_text = self._generate_text(prompt)
+        system, prompt = build_site_insight_prompt(req.model_dump())
+        raw_text = self._generate_text(prompt, system=system)
         data = self._extract_and_parse_json(raw_text)
 
         try:
@@ -192,8 +211,8 @@ class WatsonxService:
 
     def generate_capa_recommendation(self, req: CAPARecommendationRequest) -> CAPARecommendationAIResponse:
         """Generates AI root-cause hypothesis and corrective/preventive recommendations."""
-        prompt = build_capa_recommendation_prompt(req.model_dump())
-        raw_text = self._generate_text(prompt)
+        system, prompt = build_capa_recommendation_prompt(req.model_dump())
+        raw_text = self._generate_text(prompt, system=system)
         data = self._extract_and_parse_json(raw_text)
 
         try:

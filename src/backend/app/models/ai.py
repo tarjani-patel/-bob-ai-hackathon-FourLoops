@@ -26,7 +26,7 @@ class DeviationExplanationAIResponse(BaseModel):
     likelyContributingFactors: List[str] = Field(default_factory=list)
     clinicalImpact: str
     limitations: str
-    modelUsed: str = "ibm/granite-3-8b-instruct"
+    modelUsed: str = "ibm/granite-4-h-small"
     confidence: Optional[str] = "Moderate to High"
     humanReviewNotice: str = "AI-assisted clinical interpretation powered by IBM Granite. Protocol non-compliance verified by deterministic compliance engine. Subject to human clinical review under 21 CFR 312."
 
@@ -49,7 +49,7 @@ class SiteInsightAIResponse(BaseModel):
     contributingFactors: List[str] = Field(default_factory=list)
     emergingRiskExplanation: str
     recommendedInvestigationAreas: List[str] = Field(default_factory=list)
-    modelUsed: str = "ibm/granite-3-8b-instruct"
+    modelUsed: str = "ibm/granite-4-h-small"
     humanReviewNotice: str = "AI-assisted site pattern synthesis powered by IBM Granite. Site risk indices are deterministically calculated from verified trial deviations."
 
 class CAPARecommendationRequest(BaseModel):
@@ -68,5 +68,5 @@ class CAPARecommendationAIResponse(BaseModel):
     preventiveAction: str
     suggestedOwner: str
     priorityRationale: str
-    modelUsed: str = "ibm/granite-3-8b-instruct"
+    modelUsed: str = "ibm/granite-4-h-small"
     humanReviewNotice: str = "Corrective and preventive action recommendations proposed by IBM Granite foundation model. Formal authorization requires human Sponsor approval under 21 CFR 312 / GCP §5.20."

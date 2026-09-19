@@ -5,7 +5,7 @@
  * Trial, Protocol, Sites, Patients, Deviations, Risk, CAPA, Reports, and Audit.
  */
 
-import { apiClient } from "./client.js";
+import { apiClient, downloadFile } from "./client.js";
 
 // Health check
 export async function getHealth() {
@@ -20,6 +20,15 @@ export async function getTrial() {
 export async function getProtocol() {
   return apiClient("/api/protocol");
 }
+
+export async function updateProtocol(tolerances) {
+  return apiClient("/api/protocol", {
+    method: "PATCH",
+    body: JSON.stringify(tolerances),
+  });
+}
+
+export const updateProtocolTolerances = updateProtocol;
 
 export async function getSites() {
   return apiClient("/api/sites");
@@ -118,14 +127,44 @@ export async function addCAPAComment(capaId, text) {
   });
 }
 
+export async function exportCapaDossier(format = "json", filters = {}) {
+  return downloadFile("/api/capas/export", {
+    params: {
+      format,
+      site_id: filters.siteId || filters.site_id,
+      status: filters.status,
+      priority: filters.priority,
+    }
+  }, `TrialGuard_CAPA_Dossier.${format === "doc" ? "doc" : format}`);
+}
+
+export async function exportCapa(capaId, format = "json") {
+  return downloadFile(`/api/capas/${encodeURIComponent(capaId)}/export`, {
+    params: { format }
+  }, `TrialGuard_${capaId}_Form.${format === "doc" ? "doc" : format}`);
+}
+
 // Reports & Audit
 export async function getReports() {
   return apiClient("/api/reports");
 }
 
+export async function exportReport(reportId = "REP-01", format = "json") {
+  return downloadFile("/api/reports/export", {
+    params: { report_id: reportId, format }
+  }, `TrialGuard_Report_${reportId}.${format === "doc" ? "doc" : format}`);
+}
+
 export async function getAuditLogs(params = {}) {
   // params: { site_id, role, action, limit }
   return apiClient("/api/audit", { params });
+}
+
+export async function postSessionAuditEvent(action, details = {}) {
+  return apiClient("/api/audit/session-event", {
+    method: "POST",
+    body: JSON.stringify({ action, details }),
+  });
 }
 
 // Compliance Engine Execution
